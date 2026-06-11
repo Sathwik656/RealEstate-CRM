@@ -102,61 +102,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-display font-semibold text-primary">Properties by Status</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartsData?.propertiesByStatus ?? []} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e6ef" />
-                  <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e6ef', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    cursor={{ fill: '#f0f2f7' }}
-                  />
-                  <Bar dataKey="count" fill="#c9a84c" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-display font-semibold text-primary">Buyers by Budget (₹ Cr)</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartsData?.buyersByBudget ?? []}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={3}
-                    dataKey="count"
-                    nameKey="range"
-                  >
-                    {(chartsData?.buyersByBudget ?? []).map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e6ef' }} />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

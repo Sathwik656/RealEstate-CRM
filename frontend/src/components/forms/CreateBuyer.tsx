@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
+import { CurrencyInput } from './CurrencyInput';
 
 const schema = z.object({
   buyerName: z.string().min(1, 'Required'),
@@ -14,21 +15,30 @@ const schema = z.object({
   followUpDate: z.string().min(1, 'Required'),
 });
 type FormValues = z.infer<typeof schema>;
-interface Props { onSuccess: () => void; onCancel: () => void; }
+interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
 
-export function CreateBuyer({ onSuccess, onCancel }: Props) {
+export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const isEdit = !!initialData;
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
+    defaultValues: initialData ? {
+      ...initialData,
+      followUpDate: initialData.followUpDate ? new Date(initialData.followUpDate).toISOString().split('T')[0] : ''
+    } : {},
   });
 
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError(null);
-      await api.post('/buyers', data);
+      if (isEdit) {
+        await api.put(`/buyers/${initialData._id}`, data);
+      } else {
+        await api.post('/buyers', data);
+      }
       onSuccess();
     } catch (err: any) {
-      setServerError(err.response?.data?.message || 'Failed to create buyer');
+      setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} buyer`);
     }
   };
 
@@ -37,8 +47,8 @@ export function CreateBuyer({ onSuccess, onCancel }: Props) {
       <div className="flex items-center gap-3">
         <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt"><ArrowLeft size={18} /></button>
         <div>
-          <h1 className="page-title">Add New Buyer</h1>
-          <p className="page-subtitle">Register a prospective property buyer</p>
+          <h1 className="page-title">{isEdit ? 'Edit Buyer' : 'Add New Buyer'}</h1>
+          <p className="page-subtitle">{isEdit ? 'Update buyer details' : 'Register a prospective property buyer'}</p>
         </div>
       </div>
       {serverError && <div className="alert-error">{serverError}</div>}
@@ -61,11 +71,20 @@ export function CreateBuyer({ onSuccess, onCancel }: Props) {
                 <input {...register('preferredLocation')} className="form-input" placeholder="e.g. Juhu" />
                 {errors.preferredLocation && <p className="form-error">{errors.preferredLocation.message}</p>}
               </div>
-              <div className="form-group">
-                <label className="form-label">Max Budget (₹)</label>
-                <input type="number" {...register('budgetMax')} className="form-input" />
-                {errors.budgetMax && <p className="form-error">{errors.budgetMax.message}</p>}
-              </div>
+              <Controller
+                name="budgetMax"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="budgetMax"
+                    label="Max Budget (₹)"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.budgetMax?.message}
+                  />
+                )}
+              />
               <div className="form-group">
                 <label className="form-label">BHK Requirement</label>
                 <input type="number" {...register('bhkRequirement')} className="form-input" />
@@ -78,7 +97,7 @@ export function CreateBuyer({ onSuccess, onCancel }: Props) {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : 'Save Buyer'}</button>
+              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : (isEdit ? 'Update Buyer' : 'Save Buyer')}</button>
             </div>
           </form>
         </div>

@@ -11,21 +11,27 @@ const schema = z.object({
   address: z.string().min(1, 'Required'),
 });
 type FormValues = z.infer<typeof schema>;
-interface Props { onSuccess: () => void; onCancel: () => void; }
+interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
 
-export function CreateSeller({ onSuccess, onCancel }: Props) {
+export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const isEdit = !!initialData;
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: initialData || {},
   });
 
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError(null);
-      await api.post('/sellers', data);
+      if (isEdit) {
+        await api.put(`/sellers/${initialData._id}`, data);
+      } else {
+        await api.post('/sellers', data);
+      }
       onSuccess();
     } catch (err: any) {
-      setServerError(err.response?.data?.message || 'Failed to create seller');
+      setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} seller`);
     }
   };
 
@@ -34,8 +40,8 @@ export function CreateSeller({ onSuccess, onCancel }: Props) {
       <div className="flex items-center gap-3">
         <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt"><ArrowLeft size={18} /></button>
         <div>
-          <h1 className="page-title">Add New Seller</h1>
-          <p className="page-subtitle">Register a property owner or seller</p>
+          <h1 className="page-title">{isEdit ? 'Edit Seller' : 'Add New Seller'}</h1>
+          <p className="page-subtitle">{isEdit ? 'Update seller details' : 'Register a property owner or seller'}</p>
         </div>
       </div>
       {serverError && <div className="alert-error">{serverError}</div>}
@@ -59,7 +65,7 @@ export function CreateSeller({ onSuccess, onCancel }: Props) {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : 'Save Seller'}</button>
+              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : (isEdit ? 'Update Seller' : 'Save Seller')}</button>
             </div>
           </form>
         </div>

@@ -7,6 +7,7 @@ import { CreateProperty } from '@/components/forms/CreateProperty';
 export default function PropertiesPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -29,11 +30,12 @@ export default function PropertiesPage() {
     }
   };
 
-  if (isCreating) {
+  if (isCreating || editingItem) {
     return (
       <CreateProperty
-        onSuccess={() => { setIsCreating(false); refetch(); }}
-        onCancel={() => setIsCreating(false)}
+        initialData={editingItem}
+        onSuccess={() => { setIsCreating(false); setEditingItem(null); refetch(); }}
+        onCancel={() => { setIsCreating(false); setEditingItem(null); }}
       />
     );
   }
@@ -46,7 +48,7 @@ export default function PropertiesPage() {
           <p className="page-subtitle">Manage your real estate listings</p>
         </div>
         <button className="btn-accent" onClick={() => setIsCreating(true)}>
-          <Plus size={16} /> Add Property
+          <Plus size={16} />
         </button>
       </div>
 
@@ -73,7 +75,6 @@ export default function PropertiesPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Property ID</th>
                 <th>Title</th>
                 <th>Type</th>
                 <th>Price</th>
@@ -83,27 +84,26 @@ export default function PropertiesPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={6} className="py-12 text-center text-muted">Loading properties...</td></tr>
+                <tr><td colSpan={5} className="py-12 text-center text-muted">Loading properties...</td></tr>
               ) : !data?.data?.length ? (
-                <tr><td colSpan={6} className="py-12 text-center text-muted">No properties found.</td></tr>
+                <tr><td colSpan={5} className="py-12 text-center text-muted">No properties found.</td></tr>
               ) : data.data.map((p: any) => (
                 <tr key={p._id}>
-                  <td><span className="font-mono text-xs text-muted">{p.propertyId}</span></td>
                   <td className="font-semibold">{p.propertyTitle}</td>
                   <td className="text-muted">{p.propertyType}</td>
                   <td className="font-medium">₹{p.price?.toLocaleString('en-IN')}</td>
                   <td>
                     <span className={
                       p.propertyStatus === 'Available' ? 'badge-green' :
-                      p.propertyStatus === 'Sold' ? 'badge-red' :
-                      p.propertyStatus === 'Rented' ? 'badge-blue' : 'badge-gray'
+                        p.propertyStatus === 'Sold' ? 'badge-red' :
+                          p.propertyStatus === 'Rented' ? 'badge-blue' : 'badge-gray'
                     }>
                       {p.propertyStatus}
                     </span>
                   </td>
                   <td className="text-right">
                     <div className="flex justify-end gap-1">
-                      <button className="btn-icon hover:text-blue-600 hover:bg-blue-50"><Edit size={15} /></button>
+                      <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(p)}><Edit size={15} /></button>
                       <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(p._id)}><Trash2 size={15} /></button>
                     </div>
                   </td>

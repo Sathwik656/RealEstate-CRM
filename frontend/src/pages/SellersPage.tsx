@@ -6,6 +6,7 @@ import { CreateSeller } from '@/components/forms/CreateSeller';
 
 export default function SellersPage() {
   const [page, setPage] = useState(1);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['sellers', page],
@@ -18,33 +19,32 @@ export default function SellersPage() {
     catch { alert('Failed to delete seller'); }
   };
 
-  if (isCreating) return <CreateSeller onSuccess={() => { setIsCreating(false); refetch(); }} onCancel={() => setIsCreating(false)} />;
+  if (isCreating || editingItem) return <CreateSeller initialData={editingItem} onSuccess={() => { setIsCreating(false); setEditingItem(null); refetch(); }} onCancel={() => { setIsCreating(false); setEditingItem(null); }} />;
 
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div><h1 className="page-title">Sellers</h1><p className="page-subtitle">Manage property owners and sellers</p></div>
-        <button className="btn-accent" onClick={() => setIsCreating(true)}><Plus size={16} /> Add Seller</button>
+        <button className="btn-accent" onClick={() => setIsCreating(true)}><Plus size={16} /></button>
       </div>
       <div className="card">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Seller ID</th><th>Name</th><th>Contact</th><th>Address</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={5} className="py-12 text-center text-muted">Loading...</td></tr>
-               : !data?.data?.length ? <tr><td colSpan={5} className="py-12 text-center text-muted">No sellers found.</td></tr>
-               : data.data.map((s: any) => (
-                <tr key={s._id}>
-                  <td><span className="font-mono text-xs text-muted">{s.sellerId}</span></td>
-                  <td className="font-semibold">{s.sellerName}</td>
-                  <td className="text-muted">{s.contactNumber}</td>
-                  <td className="text-muted max-w-xs truncate">{s.address}</td>
-                  <td className="text-right"><div className="flex justify-end gap-1">
-                    <button className="btn-icon hover:text-blue-600 hover:bg-blue-50"><Edit size={15} /></button>
-                    <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(s._id)}><Trash2 size={15} /></button>
-                  </div></td>
-                </tr>
-              ))}
+              {isLoading ? <tr><td colSpan={4} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={4} className="py-12 text-center text-muted">No sellers found.</td></tr>
+                  : data.data.map((s: any) => (
+                    <tr key={s._id}>
+                      <td className="font-semibold">{s.sellerName}</td>
+                      <td className="text-muted">{s.contactNumber}</td>
+                      <td className="text-muted max-w-xs truncate">{s.address}</td>
+                      <td className="text-right"><div className="flex justify-end gap-1">
+                        <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(s)}><Edit size={15} /></button>
+                        <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(s._id)}><Trash2 size={15} /></button>
+                      </div></td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>

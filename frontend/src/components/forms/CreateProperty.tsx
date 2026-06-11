@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
+import { CurrencyInput } from './CurrencyInput';
 
 const schema = z.object({
   propertyType: z.string().min(1, 'Required'),
@@ -22,19 +23,20 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-interface Props { onSuccess: () => void; onCancel: () => void; }
+interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
 
-export function CreateProperty({ onSuccess, onCancel }: Props) {
+export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const isEdit = !!initialData;
 
   const { data: sellers } = useQuery({
     queryKey: ['sellers-list'],
     queryFn: async () => (await api.get('/sellers?limit=1000')).data.data,
   });
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
-    defaultValues: { parkingAvailable: false, sellerId: '' },
+    defaultValues: initialData || { parkingAvailable: false, sellerId: '' },
   });
 
   const selectedSeller = watch('sellerId');
@@ -44,10 +46,15 @@ export function CreateProperty({ onSuccess, onCancel }: Props) {
       setServerError(null);
       const payload: any = { ...data };
       if (!payload.sellerId) delete payload.sellerId;
-      await api.post('/properties', payload);
+      
+      if (isEdit) {
+        await api.put(`/properties/${initialData._id}`, payload);
+      } else {
+        await api.post('/properties', payload);
+      }
       onSuccess();
     } catch (err: any) {
-      setServerError(err.response?.data?.message || 'Failed to create property');
+      setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} property`);
     }
   };
 
@@ -56,8 +63,8 @@ export function CreateProperty({ onSuccess, onCancel }: Props) {
       <div className="flex items-center gap-3">
         <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt"><ArrowLeft size={18} /></button>
         <div>
-          <h1 className="page-title">Add New Property</h1>
-          <p className="page-subtitle">Create a new listing in the CRM</p>
+          <h1 className="page-title">{isEdit ? 'Edit Property' : 'Add New Property'}</h1>
+          <p className="page-subtitle">{isEdit ? 'Update existing property details' : 'Create a new listing in the CRM'}</p>
         </div>
       </div>
 
@@ -98,11 +105,20 @@ export function CreateProperty({ onSuccess, onCancel }: Props) {
                 {errors.purpose && <p className="form-error">{errors.purpose.message}</p>}
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Price (₹)</label>
-                <input type="number" {...register('price')} className="form-input" />
-                {errors.price && <p className="form-error">{errors.price.message}</p>}
-              </div>
+              <Controller
+                name="price"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="price"
+                    label="Price (₹)"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.price?.message}
+                  />
+                )}
+              />
 
               <div className="form-group">
                 <label className="form-label">Area (sq ft)</label>
@@ -155,7 +171,7 @@ export function CreateProperty({ onSuccess, onCancel }: Props) {
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
               <button type="submit" disabled={isSubmitting} className="btn-primary">
-                {isSubmitting ? 'Saving...' : 'Save Property'}
+                {isSubmitting ? 'Saving...' : (isEdit ? 'Update Property' : 'Save Property')}
               </button>
             </div>
           </form>

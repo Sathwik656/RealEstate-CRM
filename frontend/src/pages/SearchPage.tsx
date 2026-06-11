@@ -34,12 +34,12 @@ interface GlobalData {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MODES: { value: SearchMode; label: string; icon: any }[] = [
-  { value: 'global',     label: 'All',        icon: Layers      },
-  { value: 'properties', label: 'Properties', icon: Building2   },
-  { value: 'sellers',    label: 'Sellers',    icon: Users        },
-  { value: 'buyers',     label: 'Buyers',     icon: UserSquare2 },
-  { value: 'tenants',    label: 'Tenants',    icon: UserCircle  },
-  { value: 'rentals',    label: 'Rentals',    icon: Home        },
+  { value: 'global', label: 'All', icon: Layers },
+  { value: 'properties', label: 'Properties', icon: Building2 },
+  { value: 'sellers', label: 'Sellers', icon: Users },
+  { value: 'buyers', label: 'Buyers', icon: UserSquare2 },
+  { value: 'tenants', label: 'Tenants', icon: UserCircle },
+  { value: 'rentals', label: 'Rentals', icon: Home },
 ];
 
 const PROPERTY_TYPES = [
@@ -92,14 +92,14 @@ function buildParams(mode: SearchMode, q: string, filters: PropertyFilters): Rec
 
   // ── Structured filters (properties only) ─────────────────────────────────
   if (mode === 'properties') {
-    if (filters.bhk)       params.bhk       = filters.bhk;
-    if (filters.type)      params.type      = filters.type;
-    if (filters.status)    params.status    = filters.status;
-    if (filters.purpose)   params.purpose   = filters.purpose;
+    if (filters.bhk) params.bhk = filters.bhk;
+    if (filters.type) params.type = filters.type;
+    if (filters.status) params.status = filters.status;
+    if (filters.purpose) params.purpose = filters.purpose;
     if (filters.minBudget) params.minBudget = filters.minBudget;
     if (filters.maxBudget) params.maxBudget = filters.maxBudget;
-    if (filters.minArea)   params.minArea   = filters.minArea;
-    if (filters.maxArea)   params.maxArea   = filters.maxArea;
+    if (filters.minArea) params.minArea = filters.minArea;
+    if (filters.maxArea) params.maxArea = filters.maxArea;
   }
 
   return params;
@@ -110,11 +110,11 @@ function buildParams(mode: SearchMode, q: string, filters: PropertyFilters): Rec
 export default function SearchPage() {
   const navigate = useNavigate();
 
-  const [mode, setMode]         = useState<SearchMode>('global');
+  const [mode, setMode] = useState<SearchMode>('global');
   const [inputVal, setInputVal] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters]   = useState<PropertyFilters>({
+  const [filters, setFilters] = useState<PropertyFilters>({
     bhk: '', type: '', status: '', purpose: '',
     minBudget: '', maxBudget: '', minArea: '', maxArea: '',
   });
@@ -175,15 +175,15 @@ export default function SearchPage() {
   });
 
   const isLoading = mode === 'global' ? globalQuery.isLoading : singleQuery.isLoading;
-  const isError   = mode === 'global' ? !!globalQuery.error   : !!singleQuery.error;
+  const isError = mode === 'global' ? !!globalQuery.error : !!singleQuery.error;
 
   // ── Result counts ───────────────────────────────────────────────────────
-  const singleTotal   = singleQuery.data?.pagination?.total ?? 0;
-  const globalMeta    = globalQuery.data?.meta?.totals;
-  const globalTotal   = globalMeta
+  const singleTotal = singleQuery.data?.pagination?.total ?? 0;
+  const globalMeta = globalQuery.data?.meta?.totals;
+  const globalTotal = globalMeta
     ? Object.values(globalMeta as Record<string, number>).reduce((a, b) => a + b, 0)
     : 0;
-  const totalCount    = mode === 'global' ? globalTotal : singleTotal;
+  const totalCount = mode === 'global' ? globalTotal : singleTotal;
 
   // ─── JSX ───────────────────────────────────────────────────────────────
 
@@ -191,12 +191,6 @@ export default function SearchPage() {
     <div className="page-wrapper">
 
       {/* Page Header */}
-      <div>
-        <h1 className="page-title">Global Search</h1>
-        <p className="page-subtitle">
-          Search across all CRM modules instantly — type to see results
-        </p>
-      </div>
 
       {/* Search Card */}
       <div className="card">
@@ -208,11 +202,10 @@ export default function SearchPage() {
               <button
                 key={value}
                 onClick={() => handleModeChange(value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all duration-200 ${
-                  mode === value
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-muted hover:text-primary hover:bg-surface'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all duration-200 ${mode === value
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-muted hover:text-primary hover:bg-surface'
+                  }`}
               >
                 <Icon size={13} />
                 {label}
@@ -253,11 +246,10 @@ export default function SearchPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`btn-icon border px-3 gap-1.5 flex items-center text-xs font-medium ${
-                  showFilters || hasActiveFilters
-                    ? 'bg-accent/10 text-accent border-accent/30'
-                    : 'border-border bg-surface hover:bg-surface-alt text-muted'
-                }`}
+                className={`btn-icon border px-3 gap-1.5 flex items-center text-xs font-medium ${showFilters || hasActiveFilters
+                  ? 'bg-accent/10 text-accent border-accent/30'
+                  : 'border-border bg-surface hover:bg-surface-alt text-muted'
+                  }`}
               >
                 <SlidersHorizontal size={15} />
                 Filters
@@ -422,11 +414,11 @@ export default function SearchPage() {
 // =============================================================================
 
 const SECTION_CONFIG: Record<keyof GlobalData, { label: string; icon: any; route: string; idKey: string; nameKey: string }> = {
-  properties : { label: 'Properties', icon: Building2,   route: '/properties', idKey: 'propertyId', nameKey: 'propertyTitle' },
-  sellers    : { label: 'Sellers',    icon: Users,        route: '/sellers',    idKey: 'sellerId',   nameKey: 'sellerName'    },
-  buyers     : { label: 'Buyers',     icon: UserSquare2,  route: '/buyers',     idKey: 'buyerId',    nameKey: 'buyerName'     },
-  tenants    : { label: 'Tenants',    icon: UserCircle,   route: '/tenants',    idKey: 'tenantId',   nameKey: 'tenantName'    },
-  rentals    : { label: 'Rentals',    icon: Home,         route: '/rentals',    idKey: '_id',        nameKey: 'location'      },
+  properties: { label: 'Properties', icon: Building2, route: '/properties', idKey: 'propertyId', nameKey: 'propertyTitle' },
+  sellers: { label: 'Sellers', icon: Users, route: '/sellers', idKey: 'sellerId', nameKey: 'sellerName' },
+  buyers: { label: 'Buyers', icon: UserSquare2, route: '/buyers', idKey: 'buyerId', nameKey: 'buyerName' },
+  tenants: { label: 'Tenants', icon: UserCircle, route: '/tenants', idKey: 'tenantId', nameKey: 'tenantName' },
+  rentals: { label: 'Rentals', icon: Home, route: '/rentals', idKey: '_id', nameKey: 'location' },
 };
 
 function GlobalResults({ data, meta, q, onNavigate }: {
@@ -525,14 +517,14 @@ function ResultCard({ item, mode, cfg }: { item: any; mode: SearchMode; cfg: any
 
   const subLine: string[] = [];
   if (item.location || item.preferredLocation) subLine.push(item.location || item.preferredLocation);
-  if (item.address)          subLine.push(item.address);
-  if (item.contactNumber)    subLine.push(item.contactNumber);
-  if (item.email)            subLine.push(item.email);
+  if (item.address) subLine.push(item.address);
+  if (item.contactNumber) subLine.push(item.contactNumber);
+  if (item.email) subLine.push(item.email);
 
-  const price  = item.price || item.rentAmount || item.leaseAmount;
-  const area   = item.area;
-  const bhk    = item.bhk || item.bhkRequirement;
-  const tag    = item.propertyType || item.propertyStatus || item.status
+  const price = item.price || item.rentAmount || item.leaseAmount;
+  const area = item.area;
+  const bhk = item.bhk || item.bhkRequirement;
+  const tag = item.propertyType || item.propertyStatus || item.status
     || item.furnishing || item.purpose;
 
   return (

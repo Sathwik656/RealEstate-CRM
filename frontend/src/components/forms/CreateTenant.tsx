@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
+import { CurrencyInput } from './CurrencyInput';
 
 const schema = z.object({
   tenantName: z.string().min(1, 'Required'),
@@ -14,21 +15,27 @@ const schema = z.object({
   bhkRequirement: z.preprocess(Number, z.number().min(1)),
 });
 type FormValues = z.infer<typeof schema>;
-interface Props { onSuccess: () => void; onCancel: () => void; }
+interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
 
-export function CreateTenant({ onSuccess, onCancel }: Props) {
+export function CreateTenant({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const isEdit = !!initialData;
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
+    defaultValues: initialData || {},
   });
 
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError(null);
-      await api.post('/tenants', data);
+      if (isEdit) {
+        await api.put(`/tenants/${initialData._id}`, data);
+      } else {
+        await api.post('/tenants', data);
+      }
       onSuccess();
     } catch (err: any) {
-      setServerError(err.response?.data?.message || 'Failed to create tenant');
+      setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} tenant`);
     }
   };
 
@@ -37,8 +44,8 @@ export function CreateTenant({ onSuccess, onCancel }: Props) {
       <div className="flex items-center gap-3">
         <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt"><ArrowLeft size={18} /></button>
         <div>
-          <h1 className="page-title">Add New Tenant</h1>
-          <p className="page-subtitle">Register a prospective tenant</p>
+          <h1 className="page-title">{isEdit ? 'Edit Tenant' : 'Add New Tenant'}</h1>
+          <p className="page-subtitle">{isEdit ? 'Update tenant details' : 'Register a prospective tenant'}</p>
         </div>
       </div>
       {serverError && <div className="alert-error">{serverError}</div>}
@@ -66,10 +73,20 @@ export function CreateTenant({ onSuccess, onCancel }: Props) {
                 <input {...register('preferredLocation')} className="form-input" placeholder="e.g. Powai" />
                 {errors.preferredLocation && <p className="form-error">{errors.preferredLocation.message}</p>}
               </div>
-              <div className="form-group">
-                <label className="form-label">Budget Max (₹)</label>
-                <input type="number" {...register('budgetRange')} className="form-input" />
-              </div>
+              <Controller
+                name="budgetRange"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="budgetRange"
+                    label="Budget Max (₹)"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.budgetRange?.message}
+                  />
+                )}
+              />
               <div className="form-group">
                 <label className="form-label">BHK Requirement</label>
                 <input type="number" {...register('bhkRequirement')} className="form-input" />
@@ -77,7 +94,7 @@ export function CreateTenant({ onSuccess, onCancel }: Props) {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : 'Save Tenant'}</button>
+              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : (isEdit ? 'Update Tenant' : 'Save Tenant')}</button>
             </div>
           </form>
         </div>

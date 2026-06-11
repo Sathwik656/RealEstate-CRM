@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ArrowLeft, Upload } from 'lucide-react';
+import { CurrencyInput } from './CurrencyInput';
 
 const schema = z.object({
   propertyRef: z.string().min(1, 'Required'),
@@ -15,11 +16,12 @@ const schema = z.object({
   leaseAmount: z.preprocess(Number, z.number().min(0)),
 });
 type FormValues = z.infer<typeof schema>;
-interface Props { onSuccess: () => void; onCancel: () => void; }
+interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
 
-export function CreateLease({ onSuccess, onCancel }: Props) {
+export function CreateLease({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const isEdit = !!initialData;
 
   const { data: properties } = useQuery({
     queryKey: ['properties-list'],
@@ -30,8 +32,15 @@ export function CreateLease({ onSuccess, onCancel }: Props) {
     queryFn: async () => (await api.get('/tenants?limit=1000')).data.data,
   });
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
+    defaultValues: initialData ? {
+      ...initialData,
+      propertyRef: initialData.propertyRef?._id || initialData.propertyRef,
+      tenantRef: initialData.tenantRef?._id || initialData.tenantRef,
+      leaseStartDate: initialData.leaseStartDate ? new Date(initialData.leaseStartDate).toISOString().split('T')[0] : '',
+      leaseEndDate: initialData.leaseEndDate ? new Date(initialData.leaseEndDate).toISOString().split('T')[0] : '',
+    } : {},
   });
 
   const onSubmit = async (data: FormValues) => {
@@ -39,11 +48,16 @@ export function CreateLease({ onSuccess, onCancel }: Props) {
       setServerError(null);
       const formData = new FormData();
       Object.entries(data).forEach(([k, v]) => formData.append(k, String(v)));
-      if (file) formData.append('document', file);
-      await api.post('/leases', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (file) formData.append('agreementDocument', file); // Use agreementDocument based on backend upload middleware
+
+      if (isEdit) {
+        await api.put(`/leases/${initialData._id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        await api.post('/leases', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      }
       onSuccess();
     } catch (err: any) {
-      setServerError(err.response?.data?.message || 'Failed to create lease');
+      setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} lease`);
     }
   };
 
@@ -52,8 +66,8 @@ export function CreateLease({ onSuccess, onCancel }: Props) {
       <div className="flex items-center gap-3">
         <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt"><ArrowLeft size={18} /></button>
         <div>
-          <h1 className="page-title">Add Lease Agreement</h1>
-          <p className="page-subtitle">Create a new rental lease</p>
+          <h1 className="page-title">{isEdit ? 'Edit Lease Agreement' : 'Add Lease Agreement'}</h1>
+          <p className="page-subtitle">{isEdit ? 'Update rental lease details' : 'Create a new rental lease'}</p>
         </div>
       </div>
       {serverError && <div className="alert-error">{serverError}</div>}
@@ -96,10 +110,21 @@ export function CreateLease({ onSuccess, onCancel }: Props) {
                 <input type="date" {...register('leaseEndDate')} className="form-input" />
                 {errors.leaseEndDate && <p className="form-error">{errors.leaseEndDate.message}</p>}
               </div>
-              <div className="form-group md:col-span-2">
-                <label className="form-label">Lease Amount (₹/month)</label>
-                <input type="number" {...register('leaseAmount')} className="form-input" />
-              </div>
+              <Controller
+                name="leaseAmount"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="leaseAmount"
+                    label="Lease Amount (₹/month)"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.leaseAmount?.message}
+                    className="md:col-span-2"
+                  />
+                )}
+              />
               <div className="form-group md:col-span-2">
                 <label className="form-label">Lease Agreement Document (Optional)</label>
                 <label className="flex items-center gap-3 px-4 py-3 border border-dashed border-border rounded-lg cursor-pointer hover:border-accent hover:bg-surface-alt transition-colors">
@@ -113,7 +138,7 @@ export function CreateLease({ onSuccess, onCancel }: Props) {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : 'Save Lease'}</button>
+              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : (isEdit ? 'Update Lease' : 'Save Lease')}</button>
             </div>
           </form>
         </div>
