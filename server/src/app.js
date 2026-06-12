@@ -17,6 +17,7 @@ const tenantRoutes = require('./routes/tenantRoutes');
 const leaseRoutes = require('./routes/leaseRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const reminderRoutes = require('./routes/reminderRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -56,6 +57,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/leases', leaseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
