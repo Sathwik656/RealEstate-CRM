@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://realestate-crm-backend-hbrp.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://realestate-crm-backend-hbrp.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
