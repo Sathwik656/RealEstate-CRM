@@ -9,6 +9,7 @@ import {
   FileText,
   Search,
   TrendingUp,
+  Bell,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -20,6 +21,7 @@ const navItems = [
   { name: 'Rentals', to: '/rentals', icon: Home },
   { name: 'Tenants', to: '/tenants', icon: UserCircle },
   { name: 'Leases', to: '/leases', icon: FileText },
+  { name: 'Reminders', to: '/reminders', icon: Bell },
   { name: 'Global Search', to: '/search', icon: Search },
 ];
 

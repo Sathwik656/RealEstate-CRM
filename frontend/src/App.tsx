@@ -15,6 +15,7 @@ import RentalsPage from '@/pages/RentalsPage';
 import TenantsPage from '@/pages/TenantsPage';
 import LeasesPage from '@/pages/LeasesPage';
 import SearchPage from '@/pages/SearchPage';
+import RemindersPage from '@/pages/RemindersPage';
 
 function App() {
   const [queryClient] = useState(
@@ -61,6 +62,7 @@ function App() {
               <Route path="tenants" element={<TenantsPage />} />
               <Route path="leases" element={<LeasesPage />} />
               <Route path="search" element={<SearchPage />} />
+              <Route path="reminders" element={<RemindersPage />} />
             </Route>
 
             {/* Catch-all */}

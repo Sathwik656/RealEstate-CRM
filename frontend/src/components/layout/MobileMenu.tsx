@@ -9,6 +9,7 @@ import {
   LogOut,
   X,
   TrendingUp,
+  Bell,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -23,6 +24,7 @@ const menuItems = [
   { name: 'Rentals', to: '/rentals', icon: Home },
   { name: 'Tenants', to: '/tenants', icon: UserCircle },
   { name: 'Leases', to: '/leases', icon: FileText },
+  { name: 'Reminders', to: '/reminders', icon: Bell },
 ];
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {

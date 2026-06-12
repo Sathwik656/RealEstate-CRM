@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "778408384066",
+    "project_id": "crm-app-e8e1f",
+    "storage_bucket": "crm-app-e8e1f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:778408384066:android:68526a501f4f725c847fdb",
+        "android_client_info": {
+          "package_name": "com.veenu.crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVQ9UL1SgZFtuc_WgDiwrMFXDvawJzdPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
