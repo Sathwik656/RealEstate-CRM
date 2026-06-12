@@ -64,6 +64,12 @@ const tenantSchema = new mongoose.Schema(
       default: 'Active',
       index: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

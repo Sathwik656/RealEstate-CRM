@@ -74,7 +74,7 @@ const searchProperties = async (req, res, next) => {
     const limit = parseLimit(rawLimit);
 
     // ── Build structured (narrowing) filter ───────────────────────────────
-    const baseFilter = {};
+    const baseFilter = { createdBy: req.user._id };
 
     if (type)    baseFilter.propertyType   = type;
     if (status)  baseFilter.propertyStatus = status;
@@ -167,7 +167,7 @@ const searchSellers = async (req, res, next) => {
     const limit = parseLimit(rawLimit);
 
     // ── Build structured filter (backwards-compatible individual fields) ───
-    const baseFilter = {};
+    const baseFilter = { createdBy: req.user._id };
 
     // These legacy single-field params still work when ?q= is not supplied
     if (!q) {
@@ -221,7 +221,7 @@ const searchBuyers = async (req, res, next) => {
     const page  = parsePage(rawPage);
     const limit = parseLimit(rawLimit);
 
-    const baseFilter = {};
+    const baseFilter = { createdBy: req.user._id };
 
     if (status)  baseFilter.status           = status;
     if (bhk)     baseFilter.bhkRequirement   = Number(bhk);
@@ -277,7 +277,7 @@ const searchTenants = async (req, res, next) => {
     const page  = parsePage(rawPage);
     const limit = parseLimit(rawLimit);
 
-    const baseFilter = {};
+    const baseFilter = { createdBy: req.user._id };
 
     if (status)    baseFilter.status         = status;
     if (bhk)       baseFilter.bhkRequirement = Number(bhk);
@@ -330,7 +330,7 @@ const searchRentals = async (req, res, next) => {
     const page  = parsePage(rawPage);
     const limit = parseLimit(rawLimit);
 
-    const baseFilter = {};
+    const baseFilter = { createdBy: req.user._id };
 
     if (status)    baseFilter.propertyStatus = status;
     if (bhk)       baseFilter.bhk            = Number(bhk);
@@ -410,11 +410,11 @@ const searchGlobal = async (req, res, next) => {
     const limit = parseLimit(rawLimit);
 
     // Build one filter per collection — no structured filters for global search
-    const propFilter    = buildSearchFilter(q, SEARCH_FIELDS.property, {});
-    const sellerFilter  = buildSearchFilter(q, SEARCH_FIELDS.seller,   {});
-    const buyerFilter   = buildSearchFilter(q, SEARCH_FIELDS.buyer,    {});
-    const tenantFilter  = buildSearchFilter(q, SEARCH_FIELDS.tenant,   {});
-    const rentalFilter  = buildSearchFilter(q, SEARCH_FIELDS.rental,   {});
+    const propFilter    = buildSearchFilter(q, SEARCH_FIELDS.property, { createdBy: req.user._id });
+    const sellerFilter  = buildSearchFilter(q, SEARCH_FIELDS.seller,   { createdBy: req.user._id });
+    const buyerFilter   = buildSearchFilter(q, SEARCH_FIELDS.buyer,    { createdBy: req.user._id });
+    const tenantFilter  = buildSearchFilter(q, SEARCH_FIELDS.tenant,   { createdBy: req.user._id });
+    const rentalFilter  = buildSearchFilter(q, SEARCH_FIELDS.rental,   { createdBy: req.user._id });
 
     const sort = { createdAt: -1 };
 

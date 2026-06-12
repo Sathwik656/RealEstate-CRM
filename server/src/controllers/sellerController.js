@@ -19,7 +19,7 @@ const sellerValidation = [
 const getAllSellers = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (search) {
       filter.$or = [
@@ -57,7 +57,7 @@ const getAllSellers = async (req, res, next) => {
  */
 const getSellerById = async (req, res, next) => {
   try {
-    const seller = await Seller.findById(req.params.id).populate('propertiesLinked');
+    const seller = await Seller.findOne({ _id: req.params.id, createdBy: req.user._id }).populate('propertiesLinked');
 
     if (!seller) {
       return res.status(404).json({ success: false, message: 'Seller not found' });
@@ -79,7 +79,7 @@ const getSellerById = async (req, res, next) => {
 const createSeller = async (req, res, next) => {
   try {
     const sellerId = generateId('SEL');
-    const seller = await Seller.create({ ...req.body, sellerId });
+    const seller = await Seller.create({ ...req.body, sellerId, createdBy: req.user._id });
 
     return res.status(201).json({
       success: true,
@@ -98,7 +98,10 @@ const updateSeller = async (req, res, next) => {
   try {
     delete req.body.sellerId;
 
-    const seller = await Seller.findByIdAndUpdate(req.params.id, req.body, {
+    const seller = await Seller.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     });
@@ -122,7 +125,7 @@ const updateSeller = async (req, res, next) => {
  */
 const deleteSeller = async (req, res, next) => {
   try {
-    const seller = await Seller.findByIdAndDelete(req.params.id);
+    const seller = await Seller.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!seller) {
       return res.status(404).json({ success: false, message: 'Seller not found' });
@@ -150,13 +153,13 @@ const linkProperty = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'propertyId is required' });
     }
 
-    const property = await Property.findById(propertyId);
+    const property = await Property.findOne({ _id: propertyId, createdBy: req.user._id });
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
-    const seller = await Seller.findByIdAndUpdate(
-      req.params.id,
+    const seller = await Seller.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { $addToSet: { propertiesLinked: propertyId } },
       { new: true }
     ).populate('propertiesLinked');
@@ -181,8 +184,8 @@ const linkProperty = async (req, res, next) => {
  */
 const unlinkProperty = async (req, res, next) => {
   try {
-    const seller = await Seller.findByIdAndUpdate(
-      req.params.id,
+    const seller = await Seller.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { $pull: { propertiesLinked: req.params.propertyId } },
       { new: true }
     ).populate('propertiesLinked');

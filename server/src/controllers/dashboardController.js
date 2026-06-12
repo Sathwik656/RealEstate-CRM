@@ -45,33 +45,36 @@ const getDashboardStats = async (req, res, next) => {
       upcomingFollowUps,
       expiringLeases,
     ] = await Promise.all([
-      Property.countDocuments(),
-      Property.countDocuments({ propertyStatus: 'Available' }),
-      Property.countDocuments({ propertyStatus: 'Sold' }),
-      Property.countDocuments({ propertyStatus: 'Rented' }),
-      Property.countDocuments({ propertyStatus: 'Leased' }),
-      Seller.countDocuments(),
-      Buyer.countDocuments(),
-      Buyer.countDocuments({ status: 'Active' }),
-      Tenant.countDocuments(),
-      Tenant.countDocuments({ status: 'Active' }),
-      Lease.countDocuments(),
-      Lease.countDocuments({ status: 'Active' }),
-      Lease.countDocuments({ status: 'Expired' }),
-      RentalProperty.countDocuments(),
-      RentalProperty.countDocuments({ propertyStatus: 'Available' }),
-      RentalProperty.countDocuments({ propertyStatus: 'Occupied' }),
+      Property.countDocuments({ createdBy: req.user._id }),
+      Property.countDocuments({ propertyStatus: 'Available', createdBy: req.user._id }),
+      Property.countDocuments({ propertyStatus: 'Sold', createdBy: req.user._id }),
+      Property.countDocuments({ propertyStatus: 'Rented', createdBy: req.user._id }),
+      Property.countDocuments({ propertyStatus: 'Leased', createdBy: req.user._id }),
+      Seller.countDocuments({ createdBy: req.user._id }),
+      Buyer.countDocuments({ createdBy: req.user._id }),
+      Buyer.countDocuments({ status: 'Active', createdBy: req.user._id }),
+      Tenant.countDocuments({ createdBy: req.user._id }),
+      Tenant.countDocuments({ status: 'Active', createdBy: req.user._id }),
+      Lease.countDocuments({ createdBy: req.user._id }),
+      Lease.countDocuments({ status: 'Active', createdBy: req.user._id }),
+      Lease.countDocuments({ status: 'Expired', createdBy: req.user._id }),
+      RentalProperty.countDocuments({ createdBy: req.user._id }),
+      RentalProperty.countDocuments({ propertyStatus: 'Available', createdBy: req.user._id }),
+      RentalProperty.countDocuments({ propertyStatus: 'Occupied', createdBy: req.user._id }),
       Buyer.countDocuments({
         followUpDate: { $gte: today, $lt: tomorrow },
         status: { $ne: 'Closed' },
+        createdBy: req.user._id,
       }),
       Buyer.countDocuments({
         followUpDate: { $gt: tomorrow, $lte: nextWeek },
         status: { $ne: 'Closed' },
+        createdBy: req.user._id,
       }),
       Lease.countDocuments({
         status: 'Active',
         leaseEndDate: { $gte: today, $lte: thirtyDaysFromNow },
+        createdBy: req.user._id,
       }),
     ]);
 
@@ -124,7 +127,7 @@ const getDashboardCharts = async (req, res, next) => {
     ] = await Promise.all([
       // Monthly property creation count for the current year
       Property.aggregate([
-        { $match: { createdAt: { $gte: yearStart, $lte: yearEnd } } },
+        { $match: { createdAt: { $gte: yearStart, $lte: yearEnd }, createdBy: req.user._id } },
         {
           $group: {
             _id: { month: { $month: '$createdAt' } },
@@ -136,24 +139,28 @@ const getDashboardCharts = async (req, res, next) => {
 
       // Count of each property type
       Property.aggregate([
+        { $match: { createdBy: req.user._id } },
         { $group: { _id: '$propertyType', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),
 
       // Count of each property status
       Property.aggregate([
+        { $match: { createdBy: req.user._id } },
         { $group: { _id: '$propertyStatus', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
 
       // Furnishing distribution for rental properties
       RentalProperty.aggregate([
+        { $match: { createdBy: req.user._id } },
         { $group: { _id: '$furnishing', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),
 
       // Buyer budget ranges (bucketed)
       Buyer.aggregate([
+        { $match: { createdBy: req.user._id } },
         {
           $bucket: {
             groupBy: '$budgetMax',

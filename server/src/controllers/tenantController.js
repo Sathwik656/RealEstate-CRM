@@ -19,7 +19,7 @@ const tenantValidation = [
 const getAllTenants = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (status) filter.status = status;
     if (search) {
@@ -58,7 +58,7 @@ const getAllTenants = async (req, res, next) => {
  */
 const getTenantById = async (req, res, next) => {
   try {
-    const tenant = await Tenant.findById(req.params.id);
+    const tenant = await Tenant.findOne({ _id: req.params.id, createdBy: req.user._id });
 
     if (!tenant) {
       return res.status(404).json({ success: false, message: 'Tenant not found' });
@@ -80,7 +80,7 @@ const getTenantById = async (req, res, next) => {
 const createTenant = async (req, res, next) => {
   try {
     const tenantId = generateId('TEN');
-    const tenant = await Tenant.create({ ...req.body, tenantId });
+    const tenant = await Tenant.create({ ...req.body, tenantId, createdBy: req.user._id });
 
     return res.status(201).json({
       success: true,
@@ -99,7 +99,10 @@ const updateTenant = async (req, res, next) => {
   try {
     delete req.body.tenantId;
 
-    const tenant = await Tenant.findByIdAndUpdate(req.params.id, req.body, {
+    const tenant = await Tenant.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     });
@@ -123,7 +126,7 @@ const updateTenant = async (req, res, next) => {
  */
 const deleteTenant = async (req, res, next) => {
   try {
-    const tenant = await Tenant.findByIdAndDelete(req.params.id);
+    const tenant = await Tenant.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!tenant) {
       return res.status(404).json({ success: false, message: 'Tenant not found' });
@@ -155,8 +158,8 @@ const updateTenantStatus = async (req, res, next) => {
       });
     }
 
-    const tenant = await Tenant.findByIdAndUpdate(
-      req.params.id,
+    const tenant = await Tenant.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { status },
       { new: true, runValidators: true }
     );

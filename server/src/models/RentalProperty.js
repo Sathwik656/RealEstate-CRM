@@ -52,6 +52,12 @@ const rentalPropertySchema = new mongoose.Schema(
       default: 'Available',
       index: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

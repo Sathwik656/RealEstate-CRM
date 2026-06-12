@@ -26,7 +26,7 @@ const buyerValidation = [
 const getAllBuyers = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (status) filter.status = status;
     if (search) {
@@ -72,6 +72,7 @@ const getBuyerFollowUps = async (req, res, next) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const buyers = await Buyer.find({
+      createdBy: req.user._id,
       followUpDate: { $lte: tomorrow },
       status: { $ne: 'Closed' },
     }).sort({ followUpDate: 1 });
@@ -92,7 +93,7 @@ const getBuyerFollowUps = async (req, res, next) => {
  */
 const getBuyerById = async (req, res, next) => {
   try {
-    const buyer = await Buyer.findById(req.params.id);
+    const buyer = await Buyer.findOne({ _id: req.params.id, createdBy: req.user._id });
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
@@ -114,7 +115,7 @@ const getBuyerById = async (req, res, next) => {
 const createBuyer = async (req, res, next) => {
   try {
     const buyerId = generateId('BUY');
-    const buyer = await Buyer.create({ ...req.body, buyerId });
+    const buyer = await Buyer.create({ ...req.body, buyerId, createdBy: req.user._id });
 
     return res.status(201).json({
       success: true,
@@ -133,7 +134,10 @@ const updateBuyer = async (req, res, next) => {
   try {
     delete req.body.buyerId;
 
-    const buyer = await Buyer.findByIdAndUpdate(req.params.id, req.body, {
+    const buyer = await Buyer.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     });
@@ -157,7 +161,7 @@ const updateBuyer = async (req, res, next) => {
  */
 const deleteBuyer = async (req, res, next) => {
   try {
-    const buyer = await Buyer.findByIdAndDelete(req.params.id);
+    const buyer = await Buyer.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
@@ -188,8 +192,8 @@ const updateBuyerStatus = async (req, res, next) => {
       });
     }
 
-    const buyer = await Buyer.findByIdAndUpdate(
-      req.params.id,
+    const buyer = await Buyer.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { status },
       { new: true, runValidators: true }
     );

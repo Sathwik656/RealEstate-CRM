@@ -22,7 +22,7 @@ const leaseValidation = [
 const getAllLeases = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, propertyRef } = req.query;
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (status) filter.status = status;
     if (propertyRef) filter.propertyRef = propertyRef;
@@ -63,6 +63,7 @@ const getExpiringLeases = async (req, res, next) => {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
     const leases = await Lease.find({
+      createdBy: req.user._id,
       status: 'Active',
       leaseEndDate: { $gte: now, $lte: thirtyDaysFromNow },
     })
@@ -87,7 +88,7 @@ const getExpiringLeases = async (req, res, next) => {
  */
 const getLeaseById = async (req, res, next) => {
   try {
-    const lease = await Lease.findById(req.params.id)
+    const lease = await Lease.findOne({ _id: req.params.id, createdBy: req.user._id })
       .populate('propertyRef')
       .populate('tenantRef');
 
@@ -113,7 +114,7 @@ const getLeaseById = async (req, res, next) => {
 const createLease = async (req, res, next) => {
   try {
     const leaseId = generateId('LEA');
-    const leaseData = { ...req.body, leaseId };
+    const leaseData = { ...req.body, leaseId, createdBy: req.user._id };
 
     // Attach uploaded agreement document path if provided
     if (req.file) {
@@ -124,9 +125,10 @@ const createLease = async (req, res, next) => {
 
     // Auto-update linked Property's status to "Leased"
     if (lease.propertyRef) {
-      await Property.findByIdAndUpdate(lease.propertyRef, {
-        propertyStatus: 'Leased',
-      });
+      await Property.findOneAndUpdate(
+        { _id: lease.propertyRef, createdBy: req.user._id },
+        { propertyStatus: 'Leased' }
+      );
     }
 
     await lease.populate(['propertyRef', 'tenantRef']);
@@ -152,7 +154,10 @@ const updateLease = async (req, res, next) => {
       req.body.agreementDocument = req.file.path;
     }
 
-    const lease = await Lease.findByIdAndUpdate(req.params.id, req.body, {
+    const lease = await Lease.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     })
@@ -178,7 +183,7 @@ const updateLease = async (req, res, next) => {
  */
 const deleteLease = async (req, res, next) => {
   try {
-    const lease = await Lease.findByIdAndDelete(req.params.id);
+    const lease = await Lease.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!lease) {
       return res.status(404).json({ success: false, message: 'Lease not found' });
@@ -209,8 +214,8 @@ const updateLeaseStatus = async (req, res, next) => {
       });
     }
 
-    const lease = await Lease.findByIdAndUpdate(
-      req.params.id,
+    const lease = await Lease.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { status },
       { new: true, runValidators: true }
     )

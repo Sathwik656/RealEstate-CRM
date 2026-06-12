@@ -19,7 +19,7 @@ const rentalValidation = [
 const getAllRentals = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, location, bhk, furnishing } = req.query;
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (status) filter.propertyStatus = status;
     if (location) filter.location = { $regex: location, $options: 'i' };
@@ -56,7 +56,7 @@ const getAllRentals = async (req, res, next) => {
  */
 const getRentalById = async (req, res, next) => {
   try {
-    const rental = await RentalProperty.findById(req.params.id).populate('propertyRef');
+    const rental = await RentalProperty.findOne({ _id: req.params.id, createdBy: req.user._id }).populate('propertyRef');
 
     if (!rental) {
       return res.status(404).json({ success: false, message: 'Rental property not found' });
@@ -78,7 +78,7 @@ const getRentalById = async (req, res, next) => {
  */
 const createRental = async (req, res, next) => {
   try {
-    const rental = await RentalProperty.create(req.body);
+    const rental = await RentalProperty.create({ ...req.body, createdBy: req.user._id });
     await rental.populate('propertyRef');
 
     return res.status(201).json({
@@ -96,7 +96,10 @@ const createRental = async (req, res, next) => {
  */
 const updateRental = async (req, res, next) => {
   try {
-    const rental = await RentalProperty.findByIdAndUpdate(req.params.id, req.body, {
+    const rental = await RentalProperty.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     }).populate('propertyRef');
@@ -120,7 +123,7 @@ const updateRental = async (req, res, next) => {
  */
 const deleteRental = async (req, res, next) => {
   try {
-    const rental = await RentalProperty.findByIdAndDelete(req.params.id);
+    const rental = await RentalProperty.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!rental) {
       return res.status(404).json({ success: false, message: 'Rental property not found' });
@@ -152,8 +155,8 @@ const updateRentalStatus = async (req, res, next) => {
       });
     }
 
-    const rental = await RentalProperty.findByIdAndUpdate(
-      req.params.id,
+    const rental = await RentalProperty.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { propertyStatus: status },
       { new: true, runValidators: true }
     ).populate('propertyRef');

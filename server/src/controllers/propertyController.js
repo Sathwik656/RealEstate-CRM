@@ -38,7 +38,7 @@ const getAllProperties = async (req, res, next) => {
       location, minPrice, maxPrice, bhk, parking,
     } = req.query;
 
-    const filter = {};
+    const filter = { createdBy: req.user._id };
 
     if (status) filter.propertyStatus = status;
     if (type) filter.propertyType = type;
@@ -83,10 +83,12 @@ const getPropertyStats = async (req, res, next) => {
   try {
     const [statusStats, typeStats] = await Promise.all([
       Property.aggregate([
+        { $match: { createdBy: req.user._id } },
         { $group: { _id: '$propertyStatus', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       Property.aggregate([
+        { $match: { createdBy: req.user._id } },
         { $group: { _id: '$propertyType', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
@@ -116,7 +118,10 @@ const getPropertyById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const property = await Property.findOne({
-      $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }],
+      $and: [
+        { $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }] },
+        { createdBy: req.user._id }
+      ]
     });
 
     if (!property) {
@@ -140,13 +145,13 @@ const getPropertyById = async (req, res, next) => {
 const createProperty = async (req, res, next) => {
   try {
     const propertyId = generateId('PROP');
-    let propertyData = { ...req.body, propertyId };
+    let propertyData = { ...req.body, propertyId, createdBy: req.user._id };
     
     let seller = null;
 
     if (req.body.sellerId) {
       // Existing seller
-      seller = await Seller.findById(req.body.sellerId);
+      seller = await Seller.findOne({ _id: req.body.sellerId, createdBy: req.user._id });
       if (!seller) {
         return res.status(404).json({ success: false, message: 'Seller not found' });
       }
@@ -158,6 +163,7 @@ const createProperty = async (req, res, next) => {
       seller = await Seller.create({
         ...req.body.newSeller,
         sellerId: sellerIdGen,
+        createdBy: req.user._id,
       });
       propertyData.ownerName = propertyData.ownerName || seller.sellerName;
       propertyData.contactNumber = propertyData.contactNumber || seller.contactNumber;
@@ -193,7 +199,10 @@ const updateProperty = async (req, res, next) => {
     // Prevent overriding the auto-generated propertyId
     delete req.body.propertyId;
 
-    const property = await Property.findByIdAndUpdate(req.params.id, req.body, {
+    const property = await Property.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
+      req.body,
+      {
       new: true,
       runValidators: true,
     });
@@ -218,7 +227,7 @@ const updateProperty = async (req, res, next) => {
  */
 const deleteProperty = async (req, res, next) => {
   try {
-    const property = await Property.findByIdAndDelete(req.params.id);
+    const property = await Property.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
 
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
@@ -250,8 +259,8 @@ const updatePropertyStatus = async (req, res, next) => {
       });
     }
 
-    const property = await Property.findByIdAndUpdate(
-      req.params.id,
+    const property = await Property.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user._id },
       { propertyStatus: status },
       { new: true, runValidators: true }
     );
