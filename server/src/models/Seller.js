@@ -22,6 +22,10 @@ const sellerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    note: {
+      type: String,
+      trim: true,
+    },
     propertiesLinked: [
       {
         type: mongoose.Schema.Types.ObjectId,

@@ -77,6 +77,10 @@ const buyerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    note: {
+      type: String,
+      trim: true,
+    },
     status: {
       type: String,
       enum: ['Active', 'Closed', 'Follow-up'],

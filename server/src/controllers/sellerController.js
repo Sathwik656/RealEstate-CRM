@@ -9,6 +9,7 @@ const { generateId } = require('../utils/generateId');
 const sellerValidation = [
   body('sellerName').trim().notEmpty().withMessage('Seller name is required'),
   body('contactNumber').trim().notEmpty().withMessage('Contact number is required'),
+  body('note').optional().trim(),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────

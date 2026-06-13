@@ -58,6 +58,10 @@ const tenantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    note: {
+      type: String,
+      trim: true,
+    },
     status: {
       type: String,
       enum: ['Active', 'Inactive'],

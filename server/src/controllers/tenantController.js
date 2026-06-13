@@ -9,6 +9,7 @@ const tenantValidation = [
   body('tenantName').trim().notEmpty().withMessage('Tenant name is required'),
   body('contactNumber').trim().notEmpty().withMessage('Contact number is required'),
   body('email').optional().isEmail().withMessage('Please provide a valid email'),
+  body('note').optional().trim(),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────

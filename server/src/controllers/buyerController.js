@@ -16,6 +16,7 @@ const buyerValidation = [
     .optional()
     .isNumeric()
     .withMessage('Budget min must be a number'),
+  body('note').optional().trim(),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
