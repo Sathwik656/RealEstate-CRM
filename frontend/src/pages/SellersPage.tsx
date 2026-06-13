@@ -30,15 +30,16 @@ export default function SellersPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={4} className="py-12 text-center text-muted">Loading...</td></tr>
-                : !data?.data?.length ? <tr><td colSpan={4} className="py-12 text-center text-muted">No sellers found.</td></tr>
+              {isLoading ? <tr><td colSpan={5} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={5} className="py-12 text-center text-muted">No sellers found.</td></tr>
                   : data.data.map((s: any) => (
                     <tr key={s._id}>
                       <td className="font-semibold">{s.sellerName}</td>
                       <td className="text-muted">{s.contactNumber}</td>
                       <td className="text-muted max-w-xs truncate">{s.address}</td>
+                      <td className="text-muted max-w-[150px] truncate" title={s.note}>{s.note || '—'}</td>
                       <td className="text-right"><div className="flex justify-end gap-1">
                         <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(s)}><Edit size={15} /></button>
                         <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(s._id)}><Trash2 size={15} /></button>

@@ -13,6 +13,7 @@ const schema = z.object({
   budgetMax: z.preprocess(Number, z.number().min(0)),
   bhkRequirement: z.preprocess(Number, z.number().min(1)),
   followUpDate: z.string().min(1, 'Required'),
+  note: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
@@ -93,6 +94,10 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                 <label className="form-label">Follow-Up Date</label>
                 <input type="date" {...register('followUpDate')} className="form-input" />
                 {errors.followUpDate && <p className="form-error">{errors.followUpDate.message}</p>}
+              </div>
+              <div className="form-group md:col-span-2">
+                <label className="form-label">Note (Optional)</label>
+                <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Add a note" />
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">

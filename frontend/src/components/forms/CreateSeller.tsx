@@ -9,6 +9,7 @@ const schema = z.object({
   sellerName: z.string().min(1, 'Required'),
   contactNumber: z.string().min(10, 'Min 10 digits'),
   address: z.string().min(1, 'Required'),
+  note: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
@@ -62,6 +63,10 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
               <label className="form-label">Address</label>
               <textarea {...register('address')} rows={3} className="form-input resize-none" placeholder="e.g. Andheri West, Mumbai" />
               {errors.address && <p className="form-error">{errors.address.message}</p>}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Note (Optional)</label>
+              <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Add a note" />
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>

@@ -30,10 +30,10 @@ export default function TenantsPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Location Pref.</th><th>Budget</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Location Pref.</th><th>Budget</th><th>Status</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={6} className="py-12 text-center text-muted">Loading...</td></tr>
-                : !data?.data?.length ? <tr><td colSpan={6} className="py-12 text-center text-muted">No tenants found.</td></tr>
+              {isLoading ? <tr><td colSpan={7} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={7} className="py-12 text-center text-muted">No tenants found.</td></tr>
                   : data.data.map((t: any) => (
                     <tr key={t._id}>
                       <td className="font-semibold">{t.tenantName}</td>
@@ -41,6 +41,7 @@ export default function TenantsPage() {
                       <td className="text-muted">{t.preferredLocation}</td>
                       <td className="font-medium">₹{t.budgetRange?.toLocaleString('en-IN') || 'N/A'}</td>
                       <td><span className={t.status === 'Active' ? 'badge-green' : 'badge-gray'}>{t.status}</span></td>
+                      <td className="text-muted max-w-[150px] truncate" title={t.note}>{t.note || '—'}</td>
                       <td className="text-right"><div className="flex justify-end gap-1">
                         <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(t)}><Edit size={15} /></button>
                         <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(t._id)}><Trash2 size={15} /></button>

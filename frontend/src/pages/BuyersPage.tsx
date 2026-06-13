@@ -30,10 +30,10 @@ export default function BuyersPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Location</th><th>Budget Max</th><th>Follow-Up</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Location</th><th>Budget Max</th><th>Follow-Up</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={6} className="py-12 text-center text-muted">Loading...</td></tr>
-                : !data?.data?.length ? <tr><td colSpan={6} className="py-12 text-center text-muted">No buyers found.</td></tr>
+              {isLoading ? <tr><td colSpan={7} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={7} className="py-12 text-center text-muted">No buyers found.</td></tr>
                   : data.data.map((b: any) => (
                     <tr key={b._id}>
                       <td className="font-semibold">{b.buyerName}</td>
@@ -41,6 +41,7 @@ export default function BuyersPage() {
                       <td className="text-muted">{b.preferredLocation}</td>
                       <td className="font-medium">₹{b.budgetMax?.toLocaleString('en-IN') || 'N/A'}</td>
                       <td className="text-muted">{b.followUpDate ? new Date(b.followUpDate).toLocaleDateString() : '—'}</td>
+                      <td className="text-muted max-w-[150px] truncate" title={b.note}>{b.note || '—'}</td>
                       <td className="text-right"><div className="flex justify-end gap-1">
                         <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(b)}><Edit size={15} /></button>
                         <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(b._id)}><Trash2 size={15} /></button>

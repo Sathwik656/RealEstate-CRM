@@ -13,6 +13,7 @@ const schema = z.object({
   preferredLocation: z.string().min(1, 'Required'),
   budgetRange: z.preprocess(Number, z.number().min(0)),
   bhkRequirement: z.preprocess(Number, z.number().min(1)),
+  note: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
@@ -90,6 +91,10 @@ export function CreateTenant({ onSuccess, onCancel, initialData }: Props) {
               <div className="form-group">
                 <label className="form-label">BHK Requirement</label>
                 <input type="number" {...register('bhkRequirement')} className="form-input" />
+              </div>
+              <div className="form-group md:col-span-2">
+                <label className="form-label">Note (Optional)</label>
+                <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Add a note" />
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
