@@ -30,7 +30,7 @@ export default function BuyersPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Location</th><th>Budget Max</th><th>Follow-Up</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Location</th><th>Budget Max</th><th>Next Contact</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
               {isLoading ? <tr><td colSpan={7} className="py-12 text-center text-muted">Loading...</td></tr>
                 : !data?.data?.length ? <tr><td colSpan={7} className="py-12 text-center text-muted">No buyers found.</td></tr>
