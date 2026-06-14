@@ -2,6 +2,7 @@ const express = require('express');
 const {
   getAllReminders,
   getReminderById,
+  getReminderByBuyerId,
   createReminder,
   updateReminder,
   deleteReminder,
@@ -16,6 +17,8 @@ router.use(auth);
 router.route('/')
   .get(getAllReminders)
   .post(createReminder);
+
+router.get('/buyer/:buyerId', getReminderByBuyerId);
 
 router.route('/:id')
   .get(getReminderById)

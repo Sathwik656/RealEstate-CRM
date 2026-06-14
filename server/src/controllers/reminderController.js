@@ -66,7 +66,7 @@ const getReminderById = async (req, res, next) => {
  */
 const createReminder = async (req, res, next) => {
   try {
-    const { title, note, reminderDate, reminderTime, notificationId } = req.body;
+    const { title, note, reminderDate, reminderTime, notificationId, buyerId } = req.body;
 
     if (!title || !reminderDate || !reminderTime || notificationId === undefined) {
       return res.status(400).json({ success: false, message: 'Please provide title, date, time and notificationId' });
@@ -86,6 +86,7 @@ const createReminder = async (req, res, next) => {
 
     const reminder = await Reminder.create({
       userId: req.user._id,
+      buyerId,
       title,
       note,
       reminderDate,
@@ -110,12 +111,13 @@ const createReminder = async (req, res, next) => {
  */
 const updateReminder = async (req, res, next) => {
   try {
-    const { title, note, reminderDate, reminderTime, notificationId } = req.body;
+    const { title, note, reminderDate, reminderTime, notificationId, buyerId } = req.body;
 
     const updateFields = {};
     if (title) updateFields.title = title;
     if (note !== undefined) updateFields.note = note;
     if (notificationId !== undefined) updateFields.notificationId = notificationId;
+    if (buyerId !== undefined) updateFields.buyerId = buyerId;
 
     if (reminderDate || reminderTime) {
       const existing = await Reminder.findOne({ _id: req.params.id, userId: req.user._id });
@@ -184,9 +186,32 @@ const deleteReminder = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get single reminder by buyer ID
+ * @route   GET /api/reminders/buyer/:buyerId
+ * @access  Private
+ */
+const getReminderByBuyerId = async (req, res, next) => {
+  try {
+    const reminder = await Reminder.findOne({ buyerId: req.params.buyerId, userId: req.user._id });
+
+    if (!reminder) {
+      return res.status(404).json({ success: false, message: 'Reminder not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: reminder,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllReminders,
   getReminderById,
+  getReminderByBuyerId,
   createReminder,
   updateReminder,
   deleteReminder,

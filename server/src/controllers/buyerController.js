@@ -1,6 +1,7 @@
 'use strict';
 const { body } = require('express-validator');
 const Buyer = require('../models/Buyer');
+const Reminder = require('../models/Reminder');
 const { generateId } = require('../utils/generateId');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
@@ -115,8 +116,20 @@ const getBuyerById = async (req, res, next) => {
  */
 const createBuyer = async (req, res, next) => {
   try {
+    const { reminder, ...buyerData } = req.body;
     const buyerId = generateId('BUY');
-    const buyer = await Buyer.create({ ...req.body, buyerId, createdBy: req.user._id });
+    const buyer = await Buyer.create({ ...buyerData, buyerId, createdBy: req.user._id });
+
+    if (reminder) {
+      const dateTimeString = `${reminder.reminderDate}T${reminder.reminderTime}`;
+      const reminderDateTime = new Date(dateTimeString);
+      await Reminder.create({
+        ...reminder,
+        userId: req.user._id,
+        buyerId: buyer._id,
+        reminderDateTime,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -133,11 +146,12 @@ const createBuyer = async (req, res, next) => {
  */
 const updateBuyer = async (req, res, next) => {
   try {
-    delete req.body.buyerId;
+    const { reminder, ...buyerData } = req.body;
+    delete buyerData.buyerId;
 
     const buyer = await Buyer.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user._id },
-      req.body,
+      buyerData,
       {
       new: true,
       runValidators: true,
@@ -145,6 +159,28 @@ const updateBuyer = async (req, res, next) => {
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
+    }
+
+    if (reminder) {
+      const dateTimeString = `${reminder.reminderDate}T${reminder.reminderTime}`;
+      const reminderDateTime = new Date(dateTimeString);
+      
+      const existingReminder = await Reminder.findOne({ buyerId: buyer._id, userId: req.user._id });
+      if (existingReminder) {
+        await Reminder.findByIdAndUpdate(existingReminder._id, {
+          ...reminder,
+          reminderDateTime,
+        });
+      } else {
+        await Reminder.create({
+          ...reminder,
+          userId: req.user._id,
+          buyerId: buyer._id,
+          reminderDateTime,
+        });
+      }
+    } else if (req.body.hasOwnProperty('reminder') && !reminder) {
+      await Reminder.findOneAndDelete({ buyerId: buyer._id, userId: req.user._id });
     }
 
     return res.status(200).json({

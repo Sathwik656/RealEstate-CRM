@@ -8,6 +8,11 @@ const reminderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    buyerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Buyer',
+      index: true,
+    },
     title: {
       type: String,
       required: [true, 'Reminder title is required'],
