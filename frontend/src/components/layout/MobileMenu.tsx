@@ -10,6 +10,7 @@ import {
   X,
   TrendingUp,
   Bell,
+  Download,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -89,6 +90,17 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           ))}
 
           <div className="my-4 border-t border-border" />
+
+          <a
+            href={import.meta.env.VITE_APP_DOWNLOAD_URL || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-primary hover:bg-surface-alt transition-colors"
+          >
+            <Download size={20} className="text-muted" />
+            <span>Download App</span>
+          </a>
 
           <button
             onClick={() => { onClose(); logout(); }}

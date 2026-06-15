@@ -10,6 +10,7 @@ import {
   Search,
   TrendingUp,
   Bell,
+  Download,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -84,6 +85,22 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* App Download Link */}
+      <div className="px-3 pb-4">
+        <a
+          href={import.meta.env.VITE_APP_DOWNLOAD_URL || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10"
+        >
+          <Download
+            size={18}
+            className="flex-shrink-0 text-white/60 transition-colors group-hover:text-white/80"
+          />
+          <span>Download App</span>
+        </a>
+      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-white/10">
