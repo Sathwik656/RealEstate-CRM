@@ -86,6 +86,92 @@ const SEARCH_FIELDS = {
   ],
 };
 
+// ─── Fuse.js Weighted Key Definitions ────────────────────────────────────────
+//
+// Used by hybridSearch() in searchService.js.
+// Higher weight = that field influences the fuzzy score more.
+// Weights within a collection should sum to 1.0.
+//
+// _bhkStr is a synthetic field added by prepareForFuse() that converts the
+// numeric bhk / bhkRequirement into a human-readable "N bhk" string so that
+// Fuse.js can match text queries like "2 bhk" against it.
+
+const FUSE_KEYS = {
+  /**
+   * Property — title and owner name are the primary identifiers;
+   * location is the next most discriminating field.
+   */
+  property: [
+    { name: 'propertyTitle',       weight: 0.30 },
+    { name: 'ownerName',           weight: 0.25 },
+    { name: 'location',            weight: 0.20 },
+    { name: 'propertyType',        weight: 0.10 },
+    { name: 'propertyDescription', weight: 0.08 },
+    { name: 'address',             weight: 0.05 },
+    { name: 'landmark',            weight: 0.02 },
+  ],
+
+  /**
+   * Seller — name and phone are equally important identifiers.
+   */
+  seller: [
+    { name: 'sellerName',    weight: 0.50 },
+    { name: 'contactNumber', weight: 0.30 },
+    { name: 'address',       weight: 0.15 },
+    { name: 'note',          weight: 0.05 },
+  ],
+
+  /**
+   * Buyer — name > phone > location > address/notes.
+   */
+  buyer: [
+    { name: 'buyerName',          weight: 0.40 },
+    { name: 'contactNumber',      weight: 0.25 },
+    { name: 'preferredLocation',  weight: 0.15 },
+    { name: 'address',            weight: 0.08 },
+    { name: 'landmarkPreference', weight: 0.05 },
+    { name: 'remarks',            weight: 0.04 },
+    { name: 'note',               weight: 0.03 },
+    { name: '_bhkStr',            weight: 0.00 }, // weight 0 keeps it searchable without score distortion
+  ],
+
+  /**
+   * Tenant — name > phone > location > occupation context > email.
+   */
+  tenant: [
+    { name: 'tenantName',        weight: 0.40 },
+    { name: 'contactNumber',     weight: 0.25 },
+    { name: 'preferredLocation', weight: 0.15 },
+    { name: 'occupation',        weight: 0.07 },
+    { name: 'companyName',       weight: 0.05 },
+    { name: 'email',             weight: 0.05 },
+    { name: 'remarks',           weight: 0.02 },
+    { name: 'note',              weight: 0.01 },
+    { name: '_bhkStr',           weight: 0.00 },
+  ],
+
+  /**
+   * RentalProperty — location dominates; furnishing and BHK are secondary.
+   */
+  rental: [
+    { name: 'location',  weight: 0.55 },
+    { name: 'furnishing', weight: 0.25 },
+    { name: '_bhkStr',   weight: 0.20 },
+  ],
+};
+
+// ─── Extended Mongo Search Fields ─────────────────────────────────────────────
+// Extends SEARCH_FIELDS with note / remarks so that location mentions in notes
+// (e.g. "bondel" written in a buyer's notes) are also surfaced as candidates.
+
+const MONGO_SEARCH_FIELDS = {
+  property : [...SEARCH_FIELDS.property],
+  seller   : [...SEARCH_FIELDS.seller, 'note'],
+  buyer    : [...SEARCH_FIELDS.buyer,  'remarks', 'note'],
+  tenant   : [...SEARCH_FIELDS.tenant, 'remarks', 'note'],
+  rental   : [...SEARCH_FIELDS.rental],
+};
+
 // ─── buildSearchOr ────────────────────────────────────────────────────────────
 
 /**
@@ -176,6 +262,8 @@ const buildPagination = (total, page, limit) => ({
 
 module.exports = {
   SEARCH_FIELDS,
+  FUSE_KEYS,
+  MONGO_SEARCH_FIELDS,
   buildSearchOr,
   buildSearchFilter,
   parsePage,
