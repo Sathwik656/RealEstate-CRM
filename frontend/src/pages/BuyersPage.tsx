@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { CreateBuyer } from '@/components/forms/CreateBuyer';
 
 export default function BuyersPage() {
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['buyers', page],
-    queryFn: async () => (await api.get('/buyers', { params: { page, limit: 10 } })).data,
+    queryKey: ['buyers', page, searchQuery],
+    queryFn: async () => {
+      const endpoint = searchQuery ? '/search/buyers' : '/buyers';
+      const res = await api.get(endpoint, { params: { page, limit: 10, q: searchQuery || undefined } });
+      return res.data;
+    },
   });
 
   const handleDelete = async (id: string) => {
@@ -28,6 +33,24 @@ export default function BuyersPage() {
         <button className="btn-accent" onClick={() => setIsCreating(true)}><Plus size={16} /></button>
       </div>
       <div className="card">
+        {/* Search */}
+        <div className="card-header bg-surface-alt flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={16} className="text-muted" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search buyers..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              className="form-input pl-10 w-full"
+            />
+          </div>
+          <span className="text-sm text-muted whitespace-nowrap">
+            {data?.pagination?.total ?? 0} buyers
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead><tr><th>Name</th><th>Contact</th><th>Location</th><th>Budget Max</th><th>Next Contact</th><th>Note</th><th className="text-right">Actions</th></tr></thead>

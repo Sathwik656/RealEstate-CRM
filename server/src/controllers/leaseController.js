@@ -21,11 +21,12 @@ const leaseValidation = [
  */
 const getAllLeases = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, status, propertyRef } = req.query;
+    const { page = 1, limit = 10, status, propertyRef, q } = req.query;
     const filter = { createdBy: req.user._id };
 
     if (status) filter.status = status;
     if (propertyRef) filter.propertyRef = propertyRef;
+    if (q) filter.landlordName = { $regex: q, $options: 'i' };
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Lease.countDocuments(filter);

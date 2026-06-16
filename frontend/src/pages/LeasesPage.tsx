@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Edit, Trash2, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Download, Search } from 'lucide-react';
 import { CreateLease } from '@/components/forms/CreateLease';
 
 export default function LeasesPage() {
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['leases', page],
-    queryFn: async () => (await api.get('/leases', { params: { page, limit: 10 } })).data,
+    queryKey: ['leases', page, searchQuery],
+    queryFn: async () => (await api.get('/leases', { params: { page, limit: 10, q: searchQuery || undefined } })).data,
   });
 
   const handleDelete = async (id: string) => {
@@ -28,6 +29,24 @@ export default function LeasesPage() {
         <button className="btn-accent" onClick={() => setIsCreating(true)}><Plus size={16} /></button>
       </div>
       <div className="card">
+        {/* Search */}
+        <div className="card-header bg-surface-alt flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={16} className="text-muted" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search leases (Landlord)..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              className="form-input pl-10 w-full"
+            />
+          </div>
+          <span className="text-sm text-muted whitespace-nowrap">
+            {data?.pagination?.total ?? 0} leases
+          </span>
+        </div>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead><tr><th>Landlord</th><th>Amount</th><th>Start Date</th><th>End Date</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
