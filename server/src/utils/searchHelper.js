@@ -130,9 +130,9 @@ const FUSE_KEYS = {
     { name: 'preferredLocation',  weight: 0.15 },
     { name: 'address',            weight: 0.08 },
     { name: 'landmarkPreference', weight: 0.05 },
-    { name: 'remarks',            weight: 0.04 },
-    { name: 'note',               weight: 0.03 },
-    { name: '_bhkStr',            weight: 0.00 }, // weight 0 keeps it searchable without score distortion
+    { name: 'remarks',            weight: 0.03 },
+    { name: 'note',               weight: 0.02 },
+    { name: '_bhkStr',            weight: 0.01 }, // low weight keeps BHK searchable without dominating the score
   ],
 
   /**
@@ -147,7 +147,7 @@ const FUSE_KEYS = {
     { name: 'email',             weight: 0.05 },
     { name: 'remarks',           weight: 0.02 },
     { name: 'note',              weight: 0.01 },
-    { name: '_bhkStr',           weight: 0.00 },
+    { name: '_bhkStr',           weight: 0.01 },
   ],
 
   /**
