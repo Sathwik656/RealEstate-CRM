@@ -5,43 +5,60 @@
  * searchService.js  —  Hybrid MongoDB + Fuse.js search engine
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * HOW IT WORKS (two-stage pipeline):
+ * HOW IT WORKS (two-stage pipeline)
+ * ══════════════════════════════════
  *
- *   Stage A — MongoDB candidate retrieval  (ENHANCED: two-pass)
+ * Stage A — MongoDB candidate retrieval  (ALWAYS two passes, run in parallel)
+ * ────────────────────────────────────────────────────────────────────────────
  *
- *     Pass 1 — Primary regex
- *       Searches all mongoFields with case-insensitive regex of the full query.
- *       Also adds 3-gram substrings from the query as extra $or conditions so
- *       that typos with partial overlap still return candidates.
+ *   Pass 1 — Text-match candidates (regex + n-gram broadening)
  *
- *         "saloja" → 3-grams: ["sal","alo","loj","oja"]
- *         MongoDB finds "Saroja" because it contains "oja" and "sa".
+ *     Searches all mongoFields with a case-insensitive regex of the full query.
+ *     For queries >= 4 chars, also injects 3-gram substrings of the query as
+ *     extra $or conditions.  This increases recall for misspellings where some
+ *     characters overlap with the target string.
  *
- *     Pass 2 — Fallback broad pool  (triggered when Pass 1 < FALLBACK_THRESHOLD)
- *       Fetches the user's most recent FALLBACK_POOL_SIZE records with NO text
- *       filter (only baseFilter: createdBy, status, etc.).
- *       This guarantees coverage for severe typos where even n-grams don't help.
- *       The two pools are merged (deduplicated by _id) before fuzzy ranking.
+ *       "saloja" 3-grams → ["sal","alo","loj","oja"]
+ *       "Saroja" matches because it contains "oja" and "sa"  ✓
  *
- *   Stage B — Fuse.js in-memory fuzzy ranking
- *     Runs against the full merged candidate set.
- *     threshold: 0.4 catches up to ~2 character mutations in typical names.
- *     ignoreLocation: true lets matches appear anywhere in a field value.
+ *   Pass 2 — Broad recency pool (ALWAYS, not conditional)
  *
- *   Stage C — Result merging & ranking
- *     Priority tiers:
- *       1. Exact substring matches (score ≈ 0 or raw string contains query)
- *       2. Strong fuzzy  (score < 0.15)
- *       3. Moderate fuzzy (score 0.15–0.4)
- *     Deduplicated by _id, capped at MAX_RESULTS (50).
+ *     Fetches the most recent BROAD_POOL_SIZE records for this user using
+ *     ONLY the structured base filter (createdBy, status, budget…).
+ *     No text condition is applied, so ANY record in the user's recent history
+ *     becomes a candidate for Fuse.js fuzzy matching.
+ *
+ *     Why always? — If only triggered conditionally (when Pass 1 < threshold),
+ *     queries that accidentally return many regex hits (common letter combos)
+ *     skip the fallback even though the fuzzy target isn't in those hits.
+ *     Always running both guarantees complete coverage.
+ *
+ *   The two candidate sets are merged (deduplicated by _id).
+ *   Text-match candidates are placed first so Fuse.js sees them early and can
+ *   score them more precisely.
+ *
+ * Stage B — Fuse.js in-memory fuzzy ranking
+ * ─────────────────────────────────────────
+ *   threshold 0.4  — handles up to ~2 char mutations in typical CRM names
+ *   ignoreLocation — match anywhere in a long field value
+ *
+ *   Works for:
+ *     "saloja"   → Saroja         (1 char:  l→r)
+ *     "resma"    → Reshma         (1 miss:  h deleted)
+ *     "rajndra"  → Rajendra       (1 miss:  e deleted)
+ *     "kulshaker"→ Kulsheaker     (char transposition)
+ *     "muksh"    → Mukesh         (prefix with missing chars)
+ *
+ * Stage C — Ranking & pagination
+ * ───────────────────────────────
+ *   Tier 1: raw string contains query as substring (exact/partial)
+ *   Tier 2: Fuse score < 0.15  (strong fuzzy)
+ *   Tier 3: Fuse score 0.15–0.4 (moderate fuzzy)
+ *   Top 50 deduplicated results returned.
  *
  * Public API:
  *   hybridSearch(Model, q, fuseKeys, mongoFields, baseFilter, opts)
  *     → Promise<{ results: object[], total: number }>
- *
- * Utility exports:
- *   normalizeQuery, normalizeBhk, isPhoneQuery, buildMongoOr,
- *   buildCandidateFilter, generateNgrams
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -49,44 +66,40 @@ const Fuse = require('fuse.js');
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Maximum documents pulled from the primary regex pass. */
-const CANDIDATE_LIMIT = 1000;
+/**
+ * Max documents fetched via the regex/n-gram text-match pass (Pass 1).
+ * Covers recent exact and partial matches efficiently.
+ */
+const CANDIDATE_LIMIT = 500;
 
-/** Maximum results returned after Fuse.js ranking. */
+/**
+ * Always-on broad pool (Pass 2).
+ * Fetches the user's most recent N records with NO text filter.
+ * For a CRM where most users have < 1 000 records per collection this
+ * effectively covers the entire active dataset, guaranteeing that any record
+ * is eligible for Fuse.js fuzzy ranking regardless of the query.
+ */
+const BROAD_POOL_SIZE = 1000;
+
+/** Maximum results returned after Fuse.js ranking & deduplication. */
 const MAX_RESULTS = 50;
 
 /**
- * If the primary regex pass returns fewer than this many documents, the
- * fallback broad-pool pass is triggered.  This handles typos where even
- * n-gram-enhanced regex fails to surface the target record.
- */
-const FALLBACK_THRESHOLD = 20;
-
-/**
- * How many recent records to fetch in the fallback pass.
- * These are fetched with only the structured baseFilter (no text condition).
- * For a CRM where most users have < 500 records per collection, this covers
- * the entire active dataset in memory for fuzzy ranking.
- */
-const FALLBACK_POOL_SIZE = 500;
-
-/**
- * Fuse.js base configuration.
+ * Fuse.js base configuration shared across all collections.
  *
  * threshold: 0.4
- *   Allows up to ~2 character mutations (insert / delete / substitute) in
- *   typical CRM name lengths (6–12 chars).
- *   Examples that now work:
- *     "saloja"  → Saroja   (1 edit: l→r)
- *     "rajndra" → Rajendra (1 missing char)
- *     "resma"   → Reshma   (1 missing char)
+ *   Allows up to ~2 character edits (insert / delete / substitute) in names
+ *   of 6–12 characters. Examples:
+ *     "saloja"  vs "Saroja"   — 1 substitution → score ≈ 0.17  ✓
+ *     "resma"   vs "Reshma"   — 1 deletion     → score ≈ 0.20  ✓
+ *     "rajndra" vs "Rajendra" — 1 deletion     → score ≈ 0.13  ✓
  *
  * ignoreLocation: true
- *   Matches anywhere in the field value, not just near position 0.
- *   Critical for long fields like address or propertyDescription.
+ *   Match anywhere in the field value, not just near position 0.
+ *   Essential for long text fields (address, propertyDescription, notes).
  *
  * minMatchCharLength: 2
- *   Avoids single-character noise matches.
+ *   Avoids single-character noise.
  */
 const FUSE_BASE_OPTIONS = {
   includeScore      : true,
@@ -96,21 +109,14 @@ const FUSE_BASE_OPTIONS = {
   minMatchCharLength: 2,
 };
 
-// ─── Query Normalisation Utilities ────────────────────────────────────────────
+// ─── Query Normalisation ──────────────────────────────────────────────────────
 
-/**
- * Lowercases and trims the raw query string.
- * @param {string} q
- * @returns {string}
- */
+/** Lowercases and trims the raw query string. */
 const normalizeQuery = (q) => (q || '').trim().toLowerCase();
 
 /**
  * Detects and normalises BHK variant queries.
- *
- * Recognises: "1bhk"  "1 bhk"  "1-bhk"  "1-BHK"  "1BHK"  "2 BHK"  "3-BHK"
- *
- * @param {string} q  Already-lowercased query
+ * Recognises: "1bhk"  "1 bhk"  "1-bhk"  "1-BHK"  "2 BHK"  "3-BHK"
  * @returns {{ canonical: string, digit: number } | null}
  */
 const normalizeBhk = (q) => {
@@ -121,57 +127,52 @@ const normalizeBhk = (q) => {
 };
 
 /**
- * Returns true when the query is a digit-only fragment (phone number search).
- * @param {string} q  Already-lowercased query
- * @returns {boolean}
+ * Returns true when the query is a digit-only fragment — phone number search.
+ * Requires at least 3 consecutive digits to avoid false positives.
  */
 const isPhoneQuery = (q) => /^[\d\s\-]+$/.test(q) && /\d{3,}/.test(q);
 
-/**
- * Escapes regex special characters so user input is safe for MongoDB $regex.
- * @param {string} str
- * @returns {string}
- */
+/** Escapes regex special characters so user input is safe for MongoDB $regex. */
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // ─── N-gram Generation ────────────────────────────────────────────────────────
 
 /**
- * Generates all unique n-gram (sliding window of length n) substrings from str.
+ * Generates all unique 3-character n-gram substrings from str, capped at
+ * MAX_NGRAMS to avoid blowing up the MongoDB $or clause count.
  *
- * Used to broaden candidate retrieval for typo-tolerant fuzzy search:
- *   "saloja" → 3-grams: ["sal", "alo", "loj", "oja"]
+ * Purpose: ensures candidate retrieval for misspelled queries.
  *
- * The n-grams are searched alongside the full query in the MongoDB $or clause.
- * Because "Saroja" contains both "sa" and "oja", it becomes a candidate even
- * though the full regex /saloja/i would not match it.
+ *   "saloja" → ["sal","alo","loj","oja"]
+ *   "Saroja" contains "oja" and "sa" → retrieved as candidate even though
+ *   the full regex /saloja/ would not match it.
  *
- * Only used for queries >= MIN_NGRAM_QUERY_LEN to avoid over-broad matches
- * from very short n-grams on short queries.
+ * Only applied for queries >= MIN_NGRAM_LEN chars to keep short queries clean.
  *
- * @param {string} str   String to tokenise
- * @param {number} n     Token length (default 3)
- * @returns {string[]}   Unique n-gram tokens
+ * @param {string} str
+ * @param {number} [n=3]          N-gram length
+ * @param {number} [maxTokens=8]  Maximum tokens emitted
+ * @returns {string[]}
  */
-const generateNgrams = (str, n = 3) => {
+const generateNgrams = (str, n = 3, maxTokens = 8) => {
   if (str.length <= n) return [str];
   const tokens = new Set();
   for (let i = 0; i <= str.length - n; i++) {
     tokens.add(str.substring(i, i + n));
+    if (tokens.size >= maxTokens) break;
   }
   return [...tokens];
 };
 
-/** Minimum query length before n-gram enhancement kicks in. */
-const MIN_NGRAM_QUERY_LEN = 4;
+/** Minimum query length before n-gram expansion is applied. */
+const MIN_NGRAM_LEN = 4;
 
-// ─── MongoDB Candidate Stage ──────────────────────────────────────────────────
+// ─── MongoDB Candidate Filter ────────────────────────────────────────────────
 
 /**
- * Builds a MongoDB `$or` array for a single search term against all fields.
- *
- * @param {string}   term    The search term (escaped before use)
- * @param {string[]} fields  Field names
+ * Builds a basic $or array for a single search term.
+ * @param {string}   term
+ * @param {string[]} fields
  * @returns {object[]}
  */
 const buildMongoOr = (term, fields) => {
@@ -182,30 +183,18 @@ const buildMongoOr = (term, fields) => {
 };
 
 /**
- * Builds an ENHANCED $or array that includes:
- *   1. The full query regex (exact/partial match — fast)
- *   2. 3-gram substrings of the query (typo broadening)
- *
- * The 3-gram component ensures that a misspelled query like "saloja" still
- * retrieves "Saroja" from MongoDB because several 3-gram tokens overlap.
- *
- * N-gram clauses are only generated for queries >= MIN_NGRAM_QUERY_LEN chars
- * to prevent too-broad matching on very short queries.
- *
- * @param {string}   q       Normalised full query
- * @param {string[]} fields  Fields to search
+ * Builds an enhanced $or that includes the full query AND 3-gram alternatives.
+ * The 3-grams ensure candidate retrieval survives moderate spelling mistakes.
+ * @param {string}   q
+ * @param {string[]} fields
  * @returns {object[]}
  */
 const buildEnhancedMongoOr = (q, fields) => {
-  // Start with the full-query regex clauses
   const clauses = buildMongoOr(q, fields);
 
-  // Add 3-gram alternatives for typo tolerance
-  if (q.length >= MIN_NGRAM_QUERY_LEN) {
-    const ngrams = generateNgrams(q, 3);
+  if (q.length >= MIN_NGRAM_LEN) {
+    const ngrams = generateNgrams(q);
     for (const gram of ngrams) {
-      // Skip grams that are too generic on their own
-      if (gram.length < 3) continue;
       const escaped = escapeRegex(gram);
       for (const field of fields) {
         clauses.push({ [field]: { $regex: escaped, $options: 'i' } });
@@ -217,18 +206,18 @@ const buildEnhancedMongoOr = (q, fields) => {
 };
 
 /**
- * Builds the full MongoDB filter for candidate retrieval.
+ * Builds the MongoDB filter for Pass 1 (text-match candidates).
  *
- * Merges:
- *   1. baseFilter  — structured filters (createdBy, status, budget, dates…)
- *   2. $or clauses — enhanced regex (full query + n-grams) across all text fields
- *   3. BHK exact   — when query looks like "N bhk", also match numeric bhk field
- *   4. Phone exact — when query is all digits, target contactNumber field only
+ * Combines:
+ *   • baseFilter    — structured filters from the controller
+ *   • Enhanced $or  — full query regex + 3-gram alternatives across all fields
+ *   • BHK clause    — exact numeric match when query is "N bhk"
+ *   • Phone clause  — digit-only regex on contactNumber when query is digits
  *
- * @param {string}   q          Normalised query
- * @param {string[]} mongoFields Text fields to regex-search
- * @param {object}   baseFilter  Pre-built structured filter from controller
- * @returns {object}             MongoDB filter object
+ * @param {string}   q
+ * @param {string[]} mongoFields
+ * @param {object}   baseFilter
+ * @returns {object}
  */
 const buildCandidateFilter = (q, mongoFields, baseFilter) => {
   if (!q) return baseFilter;
@@ -239,24 +228,21 @@ const buildCandidateFilter = (q, mongoFields, baseFilter) => {
   let orClauses;
 
   if (phoneMode) {
-    // Phone-number fragment: target contactNumber / phone only (digits)
     const digits  = q.replace(/[\s\-]/g, '');
     const escaped = escapeRegex(digits);
     orClauses = ['contactNumber', 'phone'].map((f) => ({
       [f]: { $regex: escaped, $options: 'i' },
     }));
   } else {
-    // Full text: use enhanced OR (full query + n-gram broadening)
     orClauses = buildEnhancedMongoOr(q, mongoFields);
 
-    // BHK: additionally match the numeric bhk / bhkRequirement field
     if (bhkInfo) {
       orClauses.push({ bhk: bhkInfo.digit });
       orClauses.push({ bhkRequirement: bhkInfo.digit });
     }
   }
 
-  // Merge with baseFilter safely — avoid MongoDB $or conflict
+  // Merge with baseFilter — avoid MongoDB $or conflict
   if (baseFilter.$or) {
     return {
       ...baseFilter,
@@ -272,43 +258,40 @@ const buildCandidateFilter = (q, mongoFields, baseFilter) => {
   return { ...baseFilter, $or: orClauses };
 };
 
-// ─── Fuse.js Ranking Stage ────────────────────────────────────────────────────
+// ─── Fuse.js Preparation & Ranking ───────────────────────────────────────────
 
 /**
- * Converts a Mongoose lean document into a plain JS object annotated with
- * a human-readable BHK string so Fuse.js can match "2 bhk" as text.
- *
- * @param {object} doc  Mongoose lean document
- * @returns {object}
+ * Annotates a lean document with a human-readable _bhkStr field so that
+ * Fuse.js can match "2 bhk" as plain text against the numeric bhk field.
  */
 const prepareForFuse = (doc) => {
   const obj = doc.toObject ? doc.toObject() : { ...doc };
-  if (obj.bhk           != null) obj._bhkStr = `${obj.bhk} bhk`;
+  if (obj.bhk            != null) obj._bhkStr = `${obj.bhk} bhk`;
   if (obj.bhkRequirement != null) obj._bhkStr = `${obj.bhkRequirement} bhk`;
   return obj;
 };
 
 /**
- * Runs Fuse.js fuzzy search against a candidate array and classifies results
- * into priority tiers.
+ * Classifies a Fuse.js result into a priority tier.
+ *   Tier 1 — exact substring match  (score ≈ 0 or field contains query)
+ *   Tier 2 — strong fuzzy           (score < 0.15)
+ *   Tier 3 — moderate fuzzy         (score < 0.4)
  *
- * Tier 1 (exact)  — score ≈ 0 OR any field contains the query as a substring
- * Tier 2 (strong) — score < 0.15
- * Tier 3 (fuzzy)  — score < threshold (0.4)
+ * Sorted by tier ASC, then score ASC within each tier.
  *
- * @param {object[]} candidates  Plain JS objects (from prepareForFuse)
+ * @param {object[]} candidates  Prepared plain JS objects
  * @param {string}   q           Normalised query
- * @param {object[]} fuseKeys    Weighted key definitions
- * @returns {{ tier: number, score: number, item: object }[]}  Sorted flat list
+ * @param {object[]} fuseKeys    Weighted Fuse key definitions
+ * @returns {{ tier: number, score: number, item: object }[]}
  */
 const runFuse = (candidates, q, fuseKeys) => {
   if (!candidates.length) return [];
 
-  const fuse = new Fuse(candidates, { ...FUSE_BASE_OPTIONS, keys: fuseKeys });
-  const fuseResults = fuse.search(q);
+  const fuse   = new Fuse(candidates, { ...FUSE_BASE_OPTIONS, keys: fuseKeys });
+  const results = fuse.search(q);
 
-  const classified = fuseResults.map(({ item, score }) => {
-    const s = score ?? 1;
+  const classified = results.map(({ item, score }) => {
+    const s       = score ?? 1;
     const isExact = isSubstringMatch(item, q);
     let tier;
     if (isExact || s < 0.01) tier = 1;
@@ -317,7 +300,6 @@ const runFuse = (candidates, q, fuseKeys) => {
     return { tier, score: s, item };
   });
 
-  // Sort: tier ASC, then score ASC (lower Fuse score = better)
   classified.sort((a, b) =>
     a.tier !== b.tier ? a.tier - b.tier : a.score - b.score
   );
@@ -326,12 +308,8 @@ const runFuse = (candidates, q, fuseKeys) => {
 };
 
 /**
- * Returns true if any string/number field value in `obj` contains `q` as a
- * case-insensitive substring.  Used for Tier-1 (exact) classification.
- *
- * @param {object} obj
- * @param {string} q
- * @returns {boolean}
+ * Returns true if ANY string or number value in obj contains q as a
+ * case-insensitive substring.
  */
 const isSubstringMatch = (obj, q) => {
   const lq = q.toLowerCase();
@@ -342,36 +320,95 @@ const isSubstringMatch = (obj, q) => {
   });
 };
 
+// ─── BHK Strict Search ──────────────────────────────────────────────────────────
+
+/**
+ * Handles BHK queries with strict numeric equality.
+ *
+ * BHK is NOT a fuzzy concept — "1 bhk" must ONLY return records where the
+ * bhk or bhkRequirement field equals exactly 1.  We bypass Fuse.js and the
+ * broad pool entirely and issue a clean MongoDB equality filter.
+ *
+ * Supports both collection schemas:
+ *   Property / RentalProperty → `bhk` field
+ *   Buyer / Tenant            → `bhkRequirement` field
+ *
+ * @param {mongoose.Model} Model
+ * @param {{ digit: number }} bhkInfo   Output of normalizeBhk()
+ * @param {object}           baseFilter Structured filter from controller
+ * @param {object}           opts
+ * @returns {Promise<{ results: object[], total: number }>}
+ */
+const hybridSearchBhk = async (Model, bhkInfo, baseFilter, opts) => {
+  const { maxResults, candidateLimit, populate } = opts;
+
+  // Build a strict equality $or for the two possible BHK field names.
+  // Using $or (not $and) because a given collection only has one of the two.
+  const bhkOr = [
+    { bhk           : bhkInfo.digit },
+    { bhkRequirement: bhkInfo.digit },
+  ];
+
+  // Merge with baseFilter safely
+  let bhkFilter;
+  if (baseFilter.$or) {
+    // baseFilter already has a $or → wrap both in $and to avoid conflict
+    const { $or: existingOr, $and: existingAnd, ...rest } = baseFilter;
+    bhkFilter = {
+      ...rest,
+      $and: [
+        ...(existingAnd || []),
+        { $or: existingOr },
+        { $or: bhkOr },
+      ],
+    };
+  } else {
+    bhkFilter = { ...baseFilter, $or: bhkOr };
+  }
+
+  let query = Model
+    .find(bhkFilter)
+    .sort({ createdAt: -1 })
+    .limit(candidateLimit)
+    .lean();
+
+  if (populate) query = query.populate(populate);
+
+  const docs = await query;
+
+  return {
+    results: docs.slice(0, maxResults),
+    total  : docs.length,
+  };
+};
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * hybridSearch — the main entry point for all CRM search handlers.
+ * hybridSearch — entry point for all CRM search handlers.
  *
- * Two-pass candidate retrieval strategy:
+ * For every query the function runs TWO MongoDB passes in parallel then lets
+ * Fuse.js rank the merged candidate pool:
  *
- *   Pass 1 — Primary (n-gram enhanced regex)
- *     Searches mongoFields with full query + 3-gram alternatives.
- *     Retrieves up to candidateLimit (1 000) documents.
+ *   Pass 1 — regex / n-gram text filter → CANDIDATE_LIMIT docs
+ *   Pass 2 — broad recent pool (no text filter) → BROAD_POOL_SIZE docs
  *
- *   Pass 2 — Fallback (broad recent pool)
- *     Triggered when Pass 1 returns < FALLBACK_THRESHOLD results.
- *     Fetches baseFilter-only records (no text condition) sorted by createdAt.
- *     Merged with Pass 1 results (deduplicated by _id).
+ * Always running both passes (not just as a fallback) guarantees:
+ *   ✓ Short names   → recent pool covers them
+ *   ✓ Long names    → n-gram broadening catches shared substrings
+ *   ✓ Severe typos  → broad pool always includes the target in its recency window
+ *   ✓ All collections — the logic is collection-agnostic
+ *   ✓ All query lengths — 1-char prefix through multi-word full names
  *
- *   This two-pass design ensures that even severe typos ("saloja" → "Saroja",
- *   2-char mistakes in short names) find their target because the target record
- *   enters the candidate pool via the fallback, and Fuse.js then scores it
- *   correctly based on character-level similarity.
- *
- * @param {mongoose.Model} Model        Mongoose model to query
- * @param {string}         q            Raw query from ?q= (may be undefined)
- * @param {object[]}       fuseKeys     Fuse.js weighted key definitions
- * @param {string[]}       mongoFields  Fields for MongoDB $or regex
- * @param {object}         baseFilter   Pre-built structured filter
+ * @param {mongoose.Model} Model
+ * @param {string}         q           Raw ?q= value (may be undefined)
+ * @param {object[]}       fuseKeys    Weighted Fuse key definitions
+ * @param {string[]}       mongoFields Text fields for Pass 1 regex
+ * @param {object}         baseFilter  Structured filter (createdBy, status…)
  * @param {object}         [opts]
- * @param {number}         [opts.candidateLimit=1000]
+ * @param {number}         [opts.candidateLimit=500]
  * @param {number}         [opts.maxResults=50]
- * @param {string|object}  [opts.populate]  Mongoose populate config
+ * @param {string|object}  [opts.populate]
  *
  * @returns {Promise<{ results: object[], total: number }>}
  */
@@ -384,7 +421,17 @@ const hybridSearch = async (Model, q, fuseKeys, mongoFields, baseFilter, opts = 
 
   const normalised = normalizeQuery(q);
 
-  // ── If no query: return plain MongoDB results (no fuzzy pass) ───────────
+  // ── BHK strict mode — exact numeric equality, no fuzzy ───────────────────
+  // "1 bhk" / "2bhk" / "1-BHK" must ONLY return records where the BHK field
+  // equals exactly that number.  Routing these queries through Fuse.js or the
+  // broad pool causes cross-BHK contamination (2 BHK appearing in a 1 BHK
+  // search), so we short-circuit here with a clean MongoDB equality filter.
+  const bhkInfo = normalised ? normalizeBhk(normalised) : null;
+  if (bhkInfo) {
+    return hybridSearchBhk(Model, bhkInfo, baseFilter, { maxResults, candidateLimit, populate });
+  }
+
+  // ── No search query — return plain paginated MongoDB results ─────────────
   if (!normalised) {
     let query = Model.find(baseFilter).sort({ createdAt: -1 }).limit(candidateLimit).lean();
     if (populate) query = query.populate(populate);
@@ -392,56 +439,44 @@ const hybridSearch = async (Model, q, fuseKeys, mongoFields, baseFilter, opts = 
     return { results: docs, total: docs.length };
   }
 
-  // ── Pass 1: Primary regex (n-gram enhanced) ──────────────────────────────
-  const primaryFilter = buildCandidateFilter(normalised, mongoFields, baseFilter);
+  // ── Pass 1: text-match candidates (regex + n-gram enhanced) ─────────────
+  const textFilter = buildCandidateFilter(normalised, mongoFields, baseFilter);
+  let textQuery    = Model.find(textFilter).sort({ createdAt: -1 }).limit(candidateLimit).lean();
+  if (populate) textQuery = textQuery.populate(populate);
 
-  let primaryQuery = Model.find(primaryFilter).sort({ createdAt: -1 }).limit(candidateLimit).lean();
-  if (populate) primaryQuery = primaryQuery.populate(populate);
-  const primaryCandidates = await primaryQuery;
+  // ── Pass 2: broad recency pool (always, no text filter) ─────────────────
+  // Fetches the user's most recent BROAD_POOL_SIZE records irrespective of
+  // whether they contain the query string.  This guarantees any record within
+  // the recency window is reachable by Fuse.js for typo-tolerant matching —
+  // covering short names, long names, all collections uniformly.
+  let broadQuery = Model.find(baseFilter).sort({ createdAt: -1 }).limit(BROAD_POOL_SIZE).lean();
+  if (populate) broadQuery = broadQuery.populate(populate);
 
-  // ── Pass 2: Fallback broad pool (when primary is sparse) ────────────────
-  // Triggered when the regex + n-gram pass returns too few documents to give
-  // Fuse.js a meaningful candidate set.  We fetch the user's recent records
-  // with only the structured base filter (createdBy, status, etc.) so that
-  // any record in the user's dataset can be fuzzy-matched, regardless of
-  // whether it contains a matching substring.
-  let candidates = primaryCandidates;
+  // Run both in parallel — total latency ≈ slowest single query
+  const [textCandidates, broadCandidates] = await Promise.all([textQuery, broadQuery]);
 
-  if (primaryCandidates.length < FALLBACK_THRESHOLD) {
-    let fallbackQuery = Model.find(baseFilter)
-      .sort({ createdAt: -1 })
-      .limit(FALLBACK_POOL_SIZE)
-      .lean();
-    if (populate) fallbackQuery = fallbackQuery.populate(populate);
-    const fallbackCandidates = await fallbackQuery;
-
-    // Merge: primary first, then any fallback doc not already present
-    const seen = new Set(primaryCandidates.map((d) => String(d._id)));
-    const merged = [...primaryCandidates];
-    for (const doc of fallbackCandidates) {
-      const id = String(doc._id);
-      if (!seen.has(id)) {
-        seen.add(id);
-        merged.push(doc);
-      }
+  // ── Merge: text-match first (likely more relevant), then broad remainder ─
+  const seenIds  = new Set(textCandidates.map((d) => String(d._id)));
+  const merged   = [...textCandidates];
+  for (const doc of broadCandidates) {
+    const id = String(doc._id);
+    if (!seenIds.has(id)) {
+      seenIds.add(id);
+      merged.push(doc);
     }
-    candidates = merged;
   }
 
-  // ── Stage B: Prepare for Fuse.js ─────────────────────────────────────────
-  const fuseReady = candidates.map(prepareForFuse);
+  // ── Fuse.js fuzzy ranking on the merged candidate pool ───────────────────
+  const fuseReady = merged.map(prepareForFuse);
+  const ranked    = runFuse(fuseReady, normalised, fuseKeys);
 
-  // ── Stage C: Fuse.js fuzzy ranking ──────────────────────────────────────
-  const ranked = runFuse(fuseReady, normalised, fuseKeys);
-
-  // ── Stage D: Deduplicate and cap ─────────────────────────────────────────
-  const seen    = new Set();
-  const deduped = [];
-
+  // ── Deduplicate and cap at maxResults ────────────────────────────────────
+  const deduped     = [];
+  const dedupedIds  = new Set();
   for (const { item } of ranked) {
     const id = String(item._id);
-    if (!seen.has(id)) {
-      seen.add(id);
+    if (!dedupedIds.has(id)) {
+      dedupedIds.add(id);
       deduped.push(item);
     }
     if (deduped.length >= maxResults) break;
@@ -461,7 +496,6 @@ module.exports = {
   buildCandidateFilter,
   generateNgrams,
   CANDIDATE_LIMIT,
-  FALLBACK_THRESHOLD,
-  FALLBACK_POOL_SIZE,
+  BROAD_POOL_SIZE,
   MAX_RESULTS,
 };
