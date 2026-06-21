@@ -7,38 +7,41 @@ const { sendReminderEmail } = require('./emailService');
 /**
  * Reminder email scheduler.
  *
- * Runs every minute. Finds all reminders whose reminderDateTime has passed
- * within the last minute (i.e., are now due) and sends an email to the
- * owning user's registered email address.
+ * Runs every minute. Finds ALL reminders whose reminderDateTime is in the past
+ * and emailSent is not yet true, then sends emails.
  *
- * This runs entirely server-side and is completely independent of the
- * existing Capacitor LocalNotifications (Android in-app) system — both
- * work in parallel without interfering with each other.
+ * Using "all past unsent" (not a sliding 60-second window) ensures no reminder
+ * is ever missed — whether the server was down, the reminder was created while
+ * the server was offline, or the reminder was already overdue when the system
+ * started.
+ *
+ * This runs entirely server-side and is completely independent of the existing
+ * Capacitor LocalNotifications (Android in-app) system — both work in parallel.
  */
 const startReminderEmailScheduler = () => {
-  // Runs at the start of every minute: "* * * * *"
+  // Runs every minute
   cron.schedule('* * * * *', async () => {
     try {
       const now = new Date();
-      // Look back 60 seconds to catch reminders that fired during the last tick
-      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
-      // Find reminders due in this window that have NOT yet had their email sent
+      // Find ALL past reminders that haven't had an email sent yet
       const dueReminders = await Reminder.find({
-        reminderDateTime: { $gte: oneMinuteAgo, $lte: now },
+        reminderDateTime: { $lte: now },
         emailSent: { $ne: true },
       });
 
       if (!dueReminders.length) return;
 
-      console.log(`[ReminderScheduler] Found ${dueReminders.length} due reminder(s). Sending emails...`);
+      console.log(`[ReminderScheduler] Found ${dueReminders.length} unsent reminder(s). Sending emails...`);
 
       for (const reminder of dueReminders) {
         try {
-          // Fetch the user to get their registered email
+          // Fetch the owner's registered email
           const user = await User.findById(reminder.userId).select('email name');
           if (!user || !user.email) {
-            console.warn(`[ReminderScheduler] No user/email found for reminder ${reminder._id}`);
+            console.warn(`[ReminderScheduler] No user/email for reminder ${reminder._id} — skipping`);
+            // Mark as sent anyway so we don't retry forever on a missing user
+            await Reminder.findByIdAndUpdate(reminder._id, { emailSent: true });
             continue;
           }
 
@@ -49,14 +52,20 @@ const startReminderEmailScheduler = () => {
             reminder.reminderDateTime
           );
 
-          // Mark this reminder so we don't send the email again on the next tick
+          // Mark sent so we never resend this reminder
           await Reminder.findByIdAndUpdate(reminder._id, { emailSent: true });
+
+          console.log(`[ReminderScheduler] ✅ Email sent for "${reminder.title}" → ${user.email}`);
         } catch (err) {
-          console.error(`[ReminderScheduler] Failed to send email for reminder ${reminder._id}:`, err.message);
+          console.error(
+            `[ReminderScheduler] ❌ Failed for reminder "${reminder.title}" (${reminder._id}):`,
+            err.message
+          );
+          // Do NOT mark emailSent=true on error — will retry next minute
         }
       }
     } catch (err) {
-      console.error('[ReminderScheduler] Scheduler error:', err.message);
+      console.error('[ReminderScheduler] Scheduler tick error:', err.message);
     }
   });
 
