@@ -40,6 +40,10 @@ const reminderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    emailSent: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

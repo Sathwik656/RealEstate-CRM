@@ -6,6 +6,7 @@ const path = require('path');
 
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { startReminderEmailScheduler } = require('./utils/reminderScheduler');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -19,8 +20,10 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and start email reminder scheduler
+connectDB().then(() => {
+  startReminderEmailScheduler();
+});
 
 const app = express();
 
