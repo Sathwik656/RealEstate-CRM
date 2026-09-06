@@ -19,10 +19,6 @@ const navItems = [
   { name: 'Properties', to: '/properties', icon: Building2 },
   { name: 'Sellers', to: '/sellers', icon: Users },
   { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
-  { name: 'Rentals', to: '/rentals', icon: Home },
-  { name: 'Tenants', to: '/tenants', icon: UserCircle },
-  { name: 'Leases', to: '/leases', icon: FileText },
-  { name: 'Reminders', to: '/reminders', icon: Bell },
   { name: 'Global Search', to: '/search', icon: Search },
 ];
 

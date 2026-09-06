@@ -11,11 +11,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import PropertiesPage from '@/pages/PropertiesPage';
 import SellersPage from '@/pages/SellersPage';
 import BuyersPage from '@/pages/BuyersPage';
-import RentalsPage from '@/pages/RentalsPage';
-import TenantsPage from '@/pages/TenantsPage';
-import LeasesPage from '@/pages/LeasesPage';
 import SearchPage from '@/pages/SearchPage';
-import RemindersPage from '@/pages/RemindersPage';
 
 function App() {
   const [queryClient] = useState(
@@ -58,11 +54,7 @@ function App() {
               <Route path="properties" element={<PropertiesPage />} />
               <Route path="sellers" element={<SellersPage />} />
               <Route path="buyers" element={<BuyersPage />} />
-              <Route path="rentals" element={<RentalsPage />} />
-              <Route path="tenants" element={<TenantsPage />} />
-              <Route path="leases" element={<LeasesPage />} />
               <Route path="search" element={<SearchPage />} />
-              <Route path="reminders" element={<RemindersPage />} />
             </Route>
 
             {/* Catch-all */}

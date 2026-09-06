@@ -58,13 +58,6 @@ export default function DashboardPage() {
       color: 'from-emerald-500 to-emerald-600',
       bg: 'bg-emerald-50',
     },
-    {
-      title: 'Active Rentals',
-      value: statsData?.totalRentals ?? 0,
-      icon: Home,
-      color: 'from-amber-500 to-amber-600',
-      bg: 'bg-amber-50',
-    },
   ];
 
   return (

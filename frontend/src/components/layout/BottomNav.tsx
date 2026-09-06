@@ -9,7 +9,6 @@ interface BottomNavProps {
 const navItems = [
   { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Properties', to: '/properties', icon: Building2 },
-  { name: 'Reminders', to: '/reminders', icon: Bell },
   { name: 'Search', to: '/search', icon: Search },
 ];
 

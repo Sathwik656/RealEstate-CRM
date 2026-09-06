@@ -10,7 +10,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SearchMode = 'properties' | 'sellers' | 'buyers' | 'tenants' | 'rentals' | 'global';
+type SearchMode = 'properties' | 'sellers' | 'buyers' | 'global';
 
 interface PropertyFilters {
   bhk: string;
@@ -27,8 +27,6 @@ interface GlobalData {
   properties: any[];
   sellers: any[];
   buyers: any[];
-  tenants: any[];
-  rentals: any[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -38,8 +36,6 @@ const MODES: { value: SearchMode; label: string; icon: any }[] = [
   { value: 'properties', label: 'Properties', icon: Building2 },
   { value: 'sellers', label: 'Sellers', icon: Users },
   { value: 'buyers', label: 'Buyers', icon: UserSquare2 },
-  { value: 'tenants', label: 'Tenants', icon: UserCircle },
-  { value: 'rentals', label: 'Rentals', icon: Home },
 ];
 
 const PROPERTY_TYPES = [
@@ -77,14 +73,6 @@ function buildParams(mode: SearchMode, q: string, filters: PropertyFilters): Rec
         break;
       case 'buyers':
         // Old backend used ?location= for buyer preferredLocation search
-        params.location = term;
-        break;
-      case 'tenants':
-        // Old backend used ?location= for tenant preferredLocation search
-        params.location = term;
-        break;
-      case 'rentals':
-        // Old backend used ?location= for rental location search
         params.location = term;
         break;
     }
@@ -417,8 +405,6 @@ const SECTION_CONFIG: Record<keyof GlobalData, { label: string; icon: any; route
   properties: { label: 'Properties', icon: Building2, route: '/properties', idKey: 'propertyId', nameKey: 'propertyTitle' },
   sellers: { label: 'Sellers', icon: Users, route: '/sellers', idKey: 'sellerId', nameKey: 'sellerName' },
   buyers: { label: 'Buyers', icon: UserSquare2, route: '/buyers', idKey: 'buyerId', nameKey: 'buyerName' },
-  tenants: { label: 'Tenants', icon: UserCircle, route: '/tenants', idKey: 'tenantId', nameKey: 'tenantName' },
-  rentals: { label: 'Rentals', icon: Home, route: '/rentals', idKey: '_id', nameKey: 'location' },
 };
 
 function GlobalResults({ data, meta, q, onNavigate }: {

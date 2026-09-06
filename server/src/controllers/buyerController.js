@@ -1,7 +1,6 @@
 'use strict';
 const { body } = require('express-validator');
 const Buyer = require('../models/Buyer');
-const Reminder = require('../models/Reminder');
 const { generateId } = require('../utils/generateId');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
@@ -153,9 +152,9 @@ const updateBuyer = async (req, res, next) => {
       { _id: req.params.id, createdBy: req.user._id },
       buyerData,
       {
-      new: true,
-      runValidators: true,
-    });
+        new: true,
+        runValidators: true,
+      });
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
@@ -164,7 +163,7 @@ const updateBuyer = async (req, res, next) => {
     if (reminder) {
       const dateTimeString = `${reminder.reminderDate}T${reminder.reminderTime}`;
       const reminderDateTime = new Date(dateTimeString);
-      
+
       const existingReminder = await Reminder.findOne({ buyerId: buyer._id, userId: req.user._id });
       if (existingReminder) {
         await Reminder.findByIdAndUpdate(existingReminder._id, {
