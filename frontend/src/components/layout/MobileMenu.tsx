@@ -22,10 +22,6 @@ interface MobileMenuProps {
 const menuItems = [
   { name: 'Sellers', to: '/sellers', icon: Users },
   { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
-  { name: 'Rentals', to: '/rentals', icon: Home },
-  { name: 'Tenants', to: '/tenants', icon: UserCircle },
-  { name: 'Leases', to: '/leases', icon: FileText },
-  { name: 'Reminders', to: '/reminders', icon: Bell },
 ];
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
