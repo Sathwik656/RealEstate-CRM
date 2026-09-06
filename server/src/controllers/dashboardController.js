@@ -2,9 +2,6 @@
 const Property = require('../models/Property');
 const Seller = require('../models/Seller');
 const Buyer = require('../models/Buyer');
-const Tenant = require('../models/Tenant');
-const Lease = require('../models/Lease');
-const RentalProperty = require('../models/RentalProperty');
 
 /**
  * GET /api/dashboard/stats
@@ -33,17 +30,8 @@ const getDashboardStats = async (req, res, next) => {
       totalSellers,
       totalBuyers,
       activeBuyers,
-      totalTenants,
-      activeTenants,
-      totalLeases,
-      activeLeases,
-      expiredLeases,
-      totalRentals,
-      availableRentals,
-      occupiedRentals,
       todayFollowUps,
       upcomingFollowUps,
-      expiringLeases,
     ] = await Promise.all([
       Property.countDocuments({ createdBy: req.user._id }),
       Property.countDocuments({ propertyStatus: 'Available', createdBy: req.user._id }),
@@ -53,14 +41,6 @@ const getDashboardStats = async (req, res, next) => {
       Seller.countDocuments({ createdBy: req.user._id }),
       Buyer.countDocuments({ createdBy: req.user._id }),
       Buyer.countDocuments({ status: 'Active', createdBy: req.user._id }),
-      Tenant.countDocuments({ createdBy: req.user._id }),
-      Tenant.countDocuments({ status: 'Active', createdBy: req.user._id }),
-      Lease.countDocuments({ createdBy: req.user._id }),
-      Lease.countDocuments({ status: 'Active', createdBy: req.user._id }),
-      Lease.countDocuments({ status: 'Expired', createdBy: req.user._id }),
-      RentalProperty.countDocuments({ createdBy: req.user._id }),
-      RentalProperty.countDocuments({ propertyStatus: 'Available', createdBy: req.user._id }),
-      RentalProperty.countDocuments({ propertyStatus: 'Occupied', createdBy: req.user._id }),
       Buyer.countDocuments({
         followUpDate: { $gte: today, $lt: tomorrow },
         status: { $ne: 'Closed' },
@@ -69,11 +49,6 @@ const getDashboardStats = async (req, res, next) => {
       Buyer.countDocuments({
         followUpDate: { $gt: tomorrow, $lte: nextWeek },
         status: { $ne: 'Closed' },
-        createdBy: req.user._id,
-      }),
-      Lease.countDocuments({
-        status: 'Active',
-        leaseEndDate: { $gte: today, $lte: thirtyDaysFromNow },
         createdBy: req.user._id,
       }),
     ]);
@@ -90,17 +65,8 @@ const getDashboardStats = async (req, res, next) => {
         totalSellers,
         totalBuyers,
         activeBuyers,
-        totalTenants,
-        activeTenants,
-        totalLeases,
-        activeLeases,
-        expiredLeases,
-        totalRentals,
-        availableRentals,
-        occupiedRentals,
         todayFollowUps,
         upcomingFollowUps,
-        expiringLeases,
       },
     });
   } catch (err) {
@@ -122,7 +88,6 @@ const getDashboardCharts = async (req, res, next) => {
       monthlySalesRaw,
       propertyTypeDistribution,
       propertyStatusDistribution,
-      rentalFurnishingDistribution,
       buyerBudgetRangesRaw,
     ] = await Promise.all([
       // Monthly property creation count for the current year
@@ -149,13 +114,6 @@ const getDashboardCharts = async (req, res, next) => {
         { $match: { createdBy: req.user._id } },
         { $group: { _id: '$propertyStatus', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
-      ]),
-
-      // Furnishing distribution for rental properties
-      RentalProperty.aggregate([
-        { $match: { createdBy: req.user._id } },
-        { $group: { _id: '$furnishing', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
       ]),
 
       // Buyer budget ranges (bucketed)
@@ -201,10 +159,6 @@ const getDashboardCharts = async (req, res, next) => {
         propertyStatusDistribution: propertyStatusDistribution.map((p) => ({
           status: p._id,
           count: p.count,
-        })),
-        rentalFurnishingDistribution: rentalFurnishingDistribution.map((r) => ({
-          furnishing: r._id || 'Not Specified',
-          count: r.count,
         })),
         buyerBudgetRanges,
       },

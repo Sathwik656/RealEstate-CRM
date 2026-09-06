@@ -33,8 +33,6 @@
 const Property       = require('../models/Property');
 const Seller         = require('../models/Seller');
 const Buyer          = require('../models/Buyer');
-const Tenant         = require('../models/Tenant');
-const RentalProperty = require('../models/RentalProperty');
 
 const { parsePage, parseLimit, buildPagination, FUSE_KEYS, MONGO_SEARCH_FIELDS } =
   require('../utils/searchHelper');
@@ -264,121 +262,7 @@ const searchBuyers = async (req, res, next) => {
   }
 };
 
-// =============================================================================
-// GET /api/search/tenants
-//
-// Query params:
-//   ?q=          — hybrid text search across: tenantName, contactNumber,
-//                  preferredLocation, occupation, companyName, email, remarks, note
-//   ?location=   — regex on preferredLocation (backwards compat, used when no ?q=)
-//   ?status=     — exact match on status
-//   ?bhk=        — numeric match on bhkRequirement
-//   ?maxBudget=  — upper bound on budgetRange
-//   ?page= / ?limit=
-// =============================================================================
 
-const searchTenants = async (req, res, next) => {
-  try {
-    const {
-      q,
-      location, maxBudget, bhk, status,
-      page: rawPage = 1, limit: rawLimit = 10,
-    } = req.query;
-
-    const page  = parsePage(rawPage);
-    const limit = parseLimit(rawLimit);
-
-    const baseFilter = { createdBy: req.user._id };
-
-    if (status)    baseFilter.status         = status;
-    if (bhk)       baseFilter.bhkRequirement = Number(bhk);
-    if (maxBudget) baseFilter.budgetRange     = { $lte: Number(maxBudget) };
-
-    if (location && !q) {
-      baseFilter.preferredLocation = { $regex: location, $options: 'i' };
-    }
-
-    // ── Hybrid search ─────────────────────────────────────────────────────
-    const { results, total } = await hybridSearch(
-      Tenant,
-      q,
-      FUSE_KEYS.tenant,
-      MONGO_SEARCH_FIELDS.tenant,
-      baseFilter,
-    );
-
-    const skip  = (page - 1) * limit;
-    const paged = results.slice(skip, skip + limit);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Tenants search results',
-      data: paged,
-      pagination: buildPagination(total, page, limit),
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// =============================================================================
-// GET /api/search/rentals
-//
-// Query params:
-//   ?q=          — hybrid text search across: location, furnishing (_bhkStr)
-//   ?location=   — regex on location (backwards compat, used when no ?q=)
-//   ?status=     — exact match on propertyStatus
-//   ?bhk=        — numeric match
-//   ?furnishing= — exact match on furnishing enum
-//   ?maxRent=    — upper bound on rentAmount
-//   ?page= / ?limit=
-// =============================================================================
-
-const searchRentals = async (req, res, next) => {
-  try {
-    const {
-      q,
-      location, maxRent, bhk, furnishing, status,
-      page: rawPage = 1, limit: rawLimit = 10,
-    } = req.query;
-
-    const page  = parsePage(rawPage);
-    const limit = parseLimit(rawLimit);
-
-    const baseFilter = { createdBy: req.user._id };
-
-    if (status)    baseFilter.propertyStatus = status;
-    if (bhk)       baseFilter.bhk            = Number(bhk);
-    if (furnishing) baseFilter.furnishing     = furnishing;
-    if (maxRent)   baseFilter.rentAmount      = { $lte: Number(maxRent) };
-
-    if (location && !q) {
-      baseFilter.location = { $regex: location, $options: 'i' };
-    }
-
-    // ── Hybrid search (with propertyRef populate) ──────────────────────────
-    const { results, total } = await hybridSearch(
-      RentalProperty,
-      q,
-      FUSE_KEYS.rental,
-      MONGO_SEARCH_FIELDS.rental,
-      baseFilter,
-      { populate: 'propertyRef' },
-    );
-
-    const skip  = (page - 1) * limit;
-    const paged = results.slice(skip, skip + limit);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Rentals search results',
-      data: paged,
-      pagination: buildPagination(total, page, limit),
-    });
-  } catch (err) {
-    next(err);
-  }
-};
 
 // =============================================================================
 // GET /api/search/global?q=<keyword>&limit=<n>
@@ -431,14 +315,10 @@ const searchGlobal = async (req, res, next) => {
       { results: properties, total: propTotal   },
       { results: sellers,    total: sellerTotal  },
       { results: buyers,     total: buyerTotal   },
-      { results: tenants,    total: tenantTotal  },
-      { results: rentals,    total: rentalTotal  },
     ] = await Promise.all([
       hybridSearch(Property,       q, FUSE_KEYS.property, MONGO_SEARCH_FIELDS.property, userFilter, { maxResults: limit }),
       hybridSearch(Seller,         q, FUSE_KEYS.seller,   MONGO_SEARCH_FIELDS.seller,   userFilter, { maxResults: limit }),
       hybridSearch(Buyer,          q, FUSE_KEYS.buyer,    MONGO_SEARCH_FIELDS.buyer,    userFilter, { maxResults: limit }),
-      hybridSearch(Tenant,         q, FUSE_KEYS.tenant,   MONGO_SEARCH_FIELDS.tenant,   userFilter, { maxResults: limit }),
-      hybridSearch(RentalProperty, q, FUSE_KEYS.rental,   MONGO_SEARCH_FIELDS.rental,   userFilter, { maxResults: limit, populate: 'propertyRef' }),
     ]);
 
     return res.status(200).json({
@@ -448,8 +328,6 @@ const searchGlobal = async (req, res, next) => {
         properties,
         sellers,
         buyers,
-        tenants,
-        rentals,
       },
       meta: {
         query  : q.trim(),
@@ -458,8 +336,6 @@ const searchGlobal = async (req, res, next) => {
           properties : propTotal,
           sellers    : sellerTotal,
           buyers     : buyerTotal,
-          tenants    : tenantTotal,
-          rentals    : rentalTotal,
         },
       },
     });
@@ -474,7 +350,5 @@ module.exports = {
   searchProperties,
   searchSellers,
   searchBuyers,
-  searchTenants,
-  searchRentals,
   searchGlobal,
 };

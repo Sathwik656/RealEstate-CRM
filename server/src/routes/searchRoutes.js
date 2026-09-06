@@ -5,8 +5,6 @@ const {
   searchProperties,
   searchSellers,
   searchBuyers,
-  searchTenants,
-  searchRentals,
   searchGlobal,
 } = require('../controllers/searchController');
 const auth = require('../middleware/auth');
@@ -21,8 +19,6 @@ router.use(auth);
 router.get('/properties', searchProperties); // GET /api/search/properties?q=sem&status=Available
 router.get('/sellers',    searchSellers);    // GET /api/search/sellers?q=raj
 router.get('/buyers',     searchBuyers);     // GET /api/search/buyers?q=rose&status=Active
-router.get('/tenants',    searchTenants);    // GET /api/search/tenants?q=kumar&bhk=2
-router.get('/rentals',    searchRentals);    // GET /api/search/rentals?q=semi&maxRent=20000
 
 // ─── Global cross-collection search ──────────────────────────────────────────
 // Searches all 5 collections in parallel using Promise.all.
