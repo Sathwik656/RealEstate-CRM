@@ -25,8 +25,16 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'manager', 'agent'],
-      default: 'admin',
+      enum: ['admin', 'agent'],
+      default: 'agent',
+    },
+    code: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    seqNumber: {
+      type: Number,
     },
   },
   {

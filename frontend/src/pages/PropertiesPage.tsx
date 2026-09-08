@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
+import clsx from 'clsx';
 import { CreateProperty } from '@/components/forms/CreateProperty';
+import { PropertyDetailView } from '@/components/views/PropertyDetailView';
 
 export default function PropertiesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingItem, setViewingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -38,6 +41,16 @@ export default function PropertiesPage() {
         initialData={editingItem}
         onSuccess={() => { setIsCreating(false); setEditingItem(null); refetch(); }}
         onCancel={() => { setIsCreating(false); setEditingItem(null); }}
+      />
+    );
+  }
+
+  if (viewingItem) {
+    return (
+      <PropertyDetailView
+        property={viewingItem}
+        onBack={() => setViewingItem(null)}
+        onEdit={() => { setEditingItem(viewingItem); setViewingItem(null); }}
       />
     );
   }
@@ -78,8 +91,6 @@ export default function PropertiesPage() {
               <option value="">All Statuses</option>
               <option value="Available">Available</option>
               <option value="Sold">Sold</option>
-              <option value="Rented">Rented</option>
-              <option value="Leased">Leased</option>
             </select>
           </div>
           <span className="text-sm text-muted whitespace-nowrap">
@@ -91,36 +102,81 @@ export default function PropertiesPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Price</th>
+                <th>ID/Title</th>
+                <th>Type &amp; Purpose</th>
+                <th>Price &amp; Area</th>
+                <th>Location</th>
+                <th>Referred By</th>
                 <th>Status</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={5} className="py-12 text-center text-muted">Loading properties...</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-muted">Loading properties...</td></tr>
               ) : !data?.data?.length ? (
-                <tr><td colSpan={5} className="py-12 text-center text-muted">No properties found.</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-muted">No properties found.</td></tr>
               ) : data.data.map((p: any) => (
-                <tr key={p._id}>
-                  <td className="font-semibold">{p.propertyTitle}</td>
-                  <td className="text-muted">{p.propertyType}</td>
-                  <td className="font-medium">₹{p.price?.toLocaleString('en-IN')}</td>
+                <tr
+                  key={p._id}
+                  className="cursor-pointer"
+                  onClick={() => setViewingItem(p)}
+                >
                   <td>
-                    <span className={
+                    <div className="font-semibold">{p.propertyTitle}</div>
+                    <div className="text-[10px] text-muted font-mono mt-0.5">{p.code}</div>
+                  </td>
+                  <td>
+                    <span className="text-muted">{p.propertyType}</span>
+                    {p.purpose && <span className="ml-2 badge badge-blue text-[10px]">{p.purpose}</span>}
+                  </td>
+                  <td className="font-medium">
+                    ₹{p.price?.toLocaleString('en-IN')}
+                    {p.area && <div className="text-xs text-muted">{p.area.toLocaleString()} sqft</div>}
+                  </td>
+                  <td className="text-muted text-xs truncate max-w-[120px]">
+                    {p.location?.location || p.location}
+                    {p.mainDoorDirection && (
+                      <div className="text-[10px] text-muted opacity-75 mt-0.5" title={p.mainDoorDirection}>
+                        Door: {p.mainDoorDirection}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <span className="text-sm text-muted">{p.referredByAgentId?.name || '—'}</span>
+                  </td>
+                  <td>
+                    <span className={clsx('badge',
                       p.propertyStatus === 'Available' ? 'badge-green' :
                         p.propertyStatus === 'Sold' ? 'badge-red' :
                           p.propertyStatus === 'Rented' ? 'badge-blue' : 'badge-gray'
-                    }>
+                    )}>
                       {p.propertyStatus}
                     </span>
                   </td>
                   <td className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(p)}><Edit size={15} /></button>
-                      <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(p._id)}><Trash2 size={15} /></button>
+                    <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="btn-icon hover:text-accent hover:bg-accent/10"
+                        title="View details"
+                        onClick={() => setViewingItem(p)}
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button
+                        className="btn-icon hover:text-blue-600 hover:bg-blue-50"
+                        title="Edit"
+                        onClick={() => setEditingItem(p)}
+                      >
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        className="btn-icon hover:text-red-600 hover:bg-red-50"
+                        title="Delete"
+                        onClick={() => handleDelete(p._id)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>

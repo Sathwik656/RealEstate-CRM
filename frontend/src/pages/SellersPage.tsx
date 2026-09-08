@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 import { CreateSeller } from '@/components/forms/CreateSeller';
+import { SellerDetailView } from '@/components/views/SellerDetailView';
 
 export default function SellersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingItem, setViewingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['sellers', page, searchQuery],
     queryFn: async () => {
@@ -24,7 +27,25 @@ export default function SellersPage() {
     catch { alert('Failed to delete seller'); }
   };
 
-  if (isCreating || editingItem) return <CreateSeller initialData={editingItem} onSuccess={() => { setIsCreating(false); setEditingItem(null); refetch(); }} onCancel={() => { setIsCreating(false); setEditingItem(null); }} />;
+  if (isCreating || editingItem) {
+    return (
+      <CreateSeller
+        initialData={editingItem}
+        onSuccess={() => { setIsCreating(false); setEditingItem(null); refetch(); }}
+        onCancel={() => { setIsCreating(false); setEditingItem(null); }}
+      />
+    );
+  }
+
+  if (viewingItem) {
+    return (
+      <SellerDetailView
+        seller={viewingItem}
+        onBack={() => setViewingItem(null)}
+        onEdit={() => { setEditingItem(viewingItem); setViewingItem(null); }}
+      />
+    );
+  }
 
   return (
     <div className="page-wrapper">
@@ -53,20 +74,27 @@ export default function SellersPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th>Referred By</th><th>Note</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={5} className="py-12 text-center text-muted">Loading...</td></tr>
-                : !data?.data?.length ? <tr><td colSpan={5} className="py-12 text-center text-muted">No sellers found.</td></tr>
+              {isLoading ? <tr><td colSpan={6} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={6} className="py-12 text-center text-muted">No sellers found.</td></tr>
                   : data.data.map((s: any) => (
-                    <tr key={s._id}>
-                      <td className="font-semibold">{s.sellerName}</td>
+                    <tr key={s._id} className="cursor-pointer" onClick={() => setViewingItem(s)}>
+                      <td>
+                        <div className="font-semibold">{s.sellerName}</div>
+                        <div className="text-[10px] text-muted font-mono mt-0.5">{s.code}</div>
+                      </td>
                       <td className="text-muted">{s.contactNumber}</td>
-                      <td className="text-muted max-w-xs truncate">{s.address}</td>
+                      <td className="text-muted max-w-xs truncate">{s.address || '—'}</td>
+                      <td><span className="text-sm text-muted">{s.referredByAgentId?.name || '—'}</span></td>
                       <td className="text-muted max-w-[150px] truncate" title={s.note}>{s.note || '—'}</td>
-                      <td className="text-right"><div className="flex justify-end gap-1">
-                        <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(s)}><Edit size={15} /></button>
-                        <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(s._id)}><Trash2 size={15} /></button>
-                      </div></td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button className="btn-icon hover:text-accent hover:bg-accent/10" title="View details" onClick={() => setViewingItem(s)}><Eye size={15} /></button>
+                          <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" title="Edit" onClick={() => setEditingItem(s)}><Edit size={15} /></button>
+                          <button className="btn-icon hover:text-red-600 hover:bg-red-50" title="Delete" onClick={() => handleDelete(s._id)}><Trash2 size={15} /></button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
             </tbody>

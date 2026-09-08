@@ -2,17 +2,15 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllBuyers, getBuyerFollowUps, getBuyerById,
+  getAllBuyers, getBuyerById,
   createBuyer, updateBuyer, deleteBuyer,
   updateBuyerStatus, buyerValidation,
 } = require('../controllers/buyerController');
-const auth = require('../middleware/auth');
+const { auth, authorizeRoles } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 router.use(auth);
 
-// IMPORTANT: /followups before /:id to avoid route collision
-router.get('/followups', getBuyerFollowUps);
 router.get('/', getAllBuyers);
 router.get('/:id', getBuyerById);
 router.post('/', buyerValidation, validate, createBuyer);

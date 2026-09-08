@@ -34,7 +34,6 @@ const SEARCH_FIELDS = {
     'propertyTitle',
     'propertyType',
     'purpose',
-    'location',
     'landmark',
     'address',
     'propertyDescription',
@@ -62,28 +61,6 @@ const SEARCH_FIELDS = {
     'address',
     'landmarkPreference',
   ],
-
-  /**
-   * Tenant collection
-   * Same pattern as buyers — name, contact, location, employer context.
-   */
-  tenant: [
-    'tenantName',
-    'contactNumber',
-    'preferredLocation',
-    'occupation',
-    'companyName',
-    'email',
-  ],
-
-  /**
-   * RentalProperty collection
-   * Location and furnishing are the primary discovery fields.
-   */
-  rental: [
-    'location',
-    'furnishing',
-  ],
 };
 
 // ─── Fuse.js Weighted Key Definitions ────────────────────────────────────────
@@ -102,61 +79,38 @@ const FUSE_KEYS = {
    * location is the next most discriminating field.
    */
   property: [
-    { name: 'propertyTitle',       weight: 0.30 },
-    { name: 'ownerName',           weight: 0.25 },
-    { name: 'location',            weight: 0.20 },
-    { name: 'propertyType',        weight: 0.10 },
+    { name: 'propertyTitle', weight: 0.30 },
+    { name: 'ownerName', weight: 0.25 },
+    { name: 'location.location', weight: 0.20 },
+    { name: 'location.code', weight: 0.10 },
+    { name: 'propertyType', weight: 0.05 },
     { name: 'propertyDescription', weight: 0.08 },
-    { name: 'address',             weight: 0.05 },
-    { name: 'landmark',            weight: 0.02 },
+    { name: 'address', weight: 0.05 },
+    { name: 'landmark', weight: 0.02 },
   ],
 
   /**
    * Seller — name and phone are equally important identifiers.
    */
   seller: [
-    { name: 'sellerName',    weight: 0.50 },
+    { name: 'sellerName', weight: 0.50 },
     { name: 'contactNumber', weight: 0.30 },
-    { name: 'address',       weight: 0.15 },
-    { name: 'note',          weight: 0.05 },
+    { name: 'address', weight: 0.15 },
+    { name: 'note', weight: 0.05 },
   ],
 
   /**
    * Buyer — name > phone > location > address/notes.
    */
   buyer: [
-    { name: 'buyerName',          weight: 0.40 },
-    { name: 'contactNumber',      weight: 0.25 },
-    { name: 'preferredLocation',  weight: 0.15 },
-    { name: 'address',            weight: 0.08 },
-    { name: 'landmarkPreference', weight: 0.05 },
-    { name: 'remarks',            weight: 0.03 },
-    { name: 'note',               weight: 0.02 },
-    { name: '_bhkStr',            weight: 0.01 }, // low weight keeps BHK searchable without dominating the score
-  ],
-
-  /**
-   * Tenant — name > phone > location > occupation context > email.
-   */
-  tenant: [
-    { name: 'tenantName',        weight: 0.40 },
-    { name: 'contactNumber',     weight: 0.25 },
+    { name: 'buyerName', weight: 0.40 },
+    { name: 'contactNumber', weight: 0.25 },
     { name: 'preferredLocation', weight: 0.15 },
-    { name: 'occupation',        weight: 0.07 },
-    { name: 'companyName',       weight: 0.05 },
-    { name: 'email',             weight: 0.05 },
-    { name: 'remarks',           weight: 0.02 },
-    { name: 'note',              weight: 0.01 },
-    { name: '_bhkStr',           weight: 0.01 },
-  ],
-
-  /**
-   * RentalProperty — location dominates; furnishing and BHK are secondary.
-   */
-  rental: [
-    { name: 'location',  weight: 0.55 },
-    { name: 'furnishing', weight: 0.25 },
-    { name: '_bhkStr',   weight: 0.20 },
+    { name: 'address', weight: 0.08 },
+    { name: 'landmarkPreference', weight: 0.05 },
+    { name: 'remarks', weight: 0.03 },
+    { name: 'note', weight: 0.02 },
+    { name: '_bhkStr', weight: 0.01 }, // low weight keeps BHK searchable without dominating the score
   ],
 };
 
@@ -165,11 +119,9 @@ const FUSE_KEYS = {
 // (e.g. "bondel" written in a buyer's notes) are also surfaced as candidates.
 
 const MONGO_SEARCH_FIELDS = {
-  property : [...SEARCH_FIELDS.property],
-  seller   : [...SEARCH_FIELDS.seller, 'note'],
-  buyer    : [...SEARCH_FIELDS.buyer,  'remarks', 'note'],
-  tenant   : [...SEARCH_FIELDS.tenant, 'remarks', 'note'],
-  rental   : [...SEARCH_FIELDS.rental],
+  property: [...SEARCH_FIELDS.property],
+  seller: [...SEARCH_FIELDS.seller, 'note'],
+  buyer: [...SEARCH_FIELDS.buyer, 'note'],
 };
 
 // ─── buildSearchOr ────────────────────────────────────────────────────────────
@@ -242,10 +194,10 @@ const buildSearchFilter = (q, fields, baseFilter = {}) => {
 // ─── Pagination helpers ───────────────────────────────────────────────────────
 
 /** Safely parse page number; clamp to ≥ 1. */
-const parsePage  = (p)  => Math.max(1, parseInt(p,  10) || 1);
+const parsePage = (p) => Math.max(1, parseInt(p, 10) || 1);
 
 /** Safely parse limit; clamp to [1, 100]. */
-const parseLimit = (l)  => Math.min(100, Math.max(1, parseInt(l, 10) || 10));
+const parseLimit = (l) => Math.min(100, Math.max(1, parseInt(l, 10) || 10));
 
 /**
  * Returns the standard pagination envelope used across all search responses.

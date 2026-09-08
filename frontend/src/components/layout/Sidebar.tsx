@@ -11,22 +11,29 @@ import {
   TrendingUp,
   Bell,
   Download,
+  UserCog,
+  Settings,
 } from 'lucide-react';
 import clsx from 'clsx';
+
+import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Properties', to: '/properties', icon: Building2 },
   { name: 'Sellers', to: '/sellers', icon: Users },
   { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
-  { name: 'Rentals', to: '/rentals', icon: Home },
-  { name: 'Tenants', to: '/tenants', icon: UserCircle },
-  { name: 'Leases', to: '/leases', icon: FileText },
-  { name: 'Reminders', to: '/reminders', icon: Bell },
+  { name: 'Agents', to: '/agents', icon: UserCog, requireAdmin: true },
   { name: 'Global Search', to: '/search', icon: Search },
+  { name: 'Settings', to: '/settings', icon: Settings, requireAdmin: true },
 ];
 
 export function Sidebar() {
+  const { user } = useAuth();
+  
+  const visibleNavItems = navItems.filter(item => 
+    !item.requireAdmin || user?.role === 'admin'
+  );
   return (
     <aside
       className="w-64 flex-shrink-0 flex flex-col h-full"
@@ -38,26 +45,16 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #c9a84c, #f0cc6e)' }}
-          >
-            <TrendingUp size={16} className="text-primary" />
-          </div>
-          <div>
-            <h1 className="text-base font-display font-bold text-white leading-none">
-              Veenu CRM
-            </h1>
-            <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
-              Real Estate
-            </p>
-          </div>
+          <img src="/logo.png" alt="Veenu CRM Logo" className="h-10 w-auto object-contain" />
+          <span className="text-lg font-display font-bold text-white leading-none tracking-wide">
+            THE VERANDAH
+          </span>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 py-5 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.name}
             to={item.to}

@@ -10,7 +10,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SearchMode = 'properties' | 'sellers' | 'buyers' | 'tenants' | 'rentals' | 'global';
+type SearchMode = 'properties' | 'sellers' | 'buyers' | 'global';
 
 interface PropertyFilters {
   bhk: string;
@@ -27,8 +27,6 @@ interface GlobalData {
   properties: any[];
   sellers: any[];
   buyers: any[];
-  tenants: any[];
-  rentals: any[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -38,14 +36,10 @@ const MODES: { value: SearchMode; label: string; icon: any }[] = [
   { value: 'properties', label: 'Properties', icon: Building2 },
   { value: 'sellers', label: 'Sellers', icon: Users },
   { value: 'buyers', label: 'Buyers', icon: UserSquare2 },
-  { value: 'tenants', label: 'Tenants', icon: UserCircle },
-  { value: 'rentals', label: 'Rentals', icon: Home },
 ];
 
 const PROPERTY_TYPES = [
-  'Apartment/Flat', 'Independent House', 'Commercial Property',
-  'Land', 'Agricultural Land', 'Industrial Property',
-  'Rental Property', 'Lease Property',
+  'Land', 'Shop', 'Independent House', 'Flat', 'Store', 'Garage'
 ];
 
 const DEBOUNCE_MS = 400;
@@ -78,15 +72,6 @@ function buildParams(mode: SearchMode, q: string, filters: PropertyFilters): Rec
       case 'buyers':
         // Old backend used ?location= for buyer preferredLocation search
         params.location = term;
-        break;
-      case 'tenants':
-        // Old backend used ?location= for tenant preferredLocation search
-        params.location = term;
-        break;
-      case 'rentals':
-        // Old backend used ?location= for rental location search
-        params.location = term;
-        break;
     }
   }
 
@@ -168,7 +153,7 @@ export default function SearchPage() {
       const res = await api.get('/search/global', {
         params: { q: debouncedQ.trim(), limit: 6 },
       });
-      return res.data; // { success, data: { properties, sellers, buyers, tenants, rentals }, meta }
+      return res.data; // { success, data: { properties, sellers, buyers }, meta }
     },
     enabled: mode === 'global' && debouncedQ.trim().length > 0,
     staleTime: 30_000,
@@ -293,8 +278,6 @@ export default function SearchPage() {
                     <option value="">Any</option>
                     <option>Available</option>
                     <option>Sold</option>
-                    <option>Rented</option>
-                    <option>Leased</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -302,14 +285,14 @@ export default function SearchPage() {
                   <select name="purpose" value={filters.purpose} onChange={handleFilterChange} className="form-select text-sm py-2">
                     <option value="">Any</option>
                     <option>Sale</option>
-                    <option>Rent</option>
-                    <option>Lease</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label text-[10px]">BHK</label>
-                  <input type="number" name="bhk" value={filters.bhk} onChange={handleFilterChange} className="form-input text-sm py-2" placeholder="e.g. 2" min="1" max="5" />
-                </div>
+                {(!filters.type || ['Independent House', 'Flat'].includes(filters.type)) && (
+                  <div className="form-group">
+                    <label className="form-label text-[10px]">BHK</label>
+                    <input type="number" name="bhk" value={filters.bhk} onChange={handleFilterChange} className="form-input text-sm py-2" placeholder="e.g. 2" min="1" max="5" />
+                  </div>
+                )}
                 <div className="form-group">
                   <label className="form-label text-[10px]">Min Price (₹)</label>
                   <input type="number" name="minBudget" value={filters.minBudget} onChange={handleFilterChange} className="form-input text-sm py-2" placeholder="Min" />
@@ -414,11 +397,9 @@ export default function SearchPage() {
 // =============================================================================
 
 const SECTION_CONFIG: Record<keyof GlobalData, { label: string; icon: any; route: string; idKey: string; nameKey: string }> = {
-  properties: { label: 'Properties', icon: Building2, route: '/properties', idKey: 'propertyId', nameKey: 'propertyTitle' },
-  sellers: { label: 'Sellers', icon: Users, route: '/sellers', idKey: 'sellerId', nameKey: 'sellerName' },
-  buyers: { label: 'Buyers', icon: UserSquare2, route: '/buyers', idKey: 'buyerId', nameKey: 'buyerName' },
-  tenants: { label: 'Tenants', icon: UserCircle, route: '/tenants', idKey: 'tenantId', nameKey: 'tenantName' },
-  rentals: { label: 'Rentals', icon: Home, route: '/rentals', idKey: '_id', nameKey: 'location' },
+  properties: { label: 'Properties', icon: Building2, route: '/properties', idKey: 'code', nameKey: 'propertyTitle' },
+  sellers: { label: 'Sellers', icon: Users, route: '/sellers', idKey: 'code', nameKey: 'sellerName' },
+  buyers: { label: 'Buyers', icon: UserSquare2, route: '/buyers', idKey: 'code', nameKey: 'buyerName' },
 };
 
 function GlobalResults({ data, meta, q, onNavigate }: {
@@ -510,18 +491,22 @@ function CollectionResults({ items, mode, pagination }: {
 // =============================================================================
 
 function ResultCard({ item, mode, cfg }: { item: any; mode: SearchMode; cfg: any }) {
+  const locName = typeof item.location === 'object' && item.location !== null ? item.location.location : item.location;
+  const prefLoc = typeof item.preferredLocation === 'object' && item.preferredLocation !== null ? item.preferredLocation.location : item.preferredLocation;
+  const displayLoc = locName || prefLoc;
+
   const name = item[cfg.nameKey] || item.propertyTitle || item.sellerName
-    || item.buyerName || item.tenantName || item.location || `ID: ${item._id?.slice(-6)}`;
+    || item.buyerName || displayLoc || `ID: ${item._id?.slice(-6)}`;
 
   const displayId = item[cfg.idKey] || item._id?.slice(-8);
 
   const subLine: string[] = [];
-  if (item.location || item.preferredLocation) subLine.push(item.location || item.preferredLocation);
+  if (displayLoc) subLine.push(displayLoc);
   if (item.address) subLine.push(item.address);
   if (item.contactNumber) subLine.push(item.contactNumber);
   if (item.email) subLine.push(item.email);
 
-  const price = item.price || item.rentAmount || item.leaseAmount;
+  const price = item.price;
   const area = item.area;
   const bhk = item.bhk || item.bhkRequirement;
   const tag = item.propertyType || item.propertyStatus || item.status
@@ -547,10 +532,10 @@ function ResultCard({ item, mode, cfg }: { item: any; mode: SearchMode; cfg: any
 
         {/* Sub-line */}
         <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted">
-          {(item.location || item.preferredLocation) && (
+          {displayLoc && (
             <span className="flex items-center gap-1">
               <MapPin size={10} className="text-accent/60" />
-              {item.location || item.preferredLocation}
+              {displayLoc}
             </span>
           )}
           {item.contactNumber && (
@@ -571,7 +556,7 @@ function ResultCard({ item, mode, cfg }: { item: any; mode: SearchMode; cfg: any
               {area.toLocaleString()} sqft
             </span>
           )}
-          {item.address && !item.location && (
+          {item.address && !displayLoc && (
             <span className="truncate max-w-xs">{item.address}</span>
           )}
         </div>

@@ -1,8 +1,8 @@
 'use strict';
 const { body } = require('express-validator');
 const Buyer = require('../models/Buyer');
-const Reminder = require('../models/Reminder');
 const { generateId } = require('../utils/generateId');
+const { generateEntityCode } = require('../utils/generateCode');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -18,6 +18,11 @@ const buyerValidation = [
     .isNumeric()
     .withMessage('Budget min must be a number'),
   body('note').optional().trim(),
+  body('purpose')
+    .notEmpty()
+    .withMessage('Purpose is required')
+    .isIn(['Purchase', 'Rent'])
+    .withMessage('Purpose must be Purchase or Rent'),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
@@ -28,7 +33,7 @@ const buyerValidation = [
 const getAllBuyers = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
-    const filter = { createdBy: req.user._id };
+    const filter = req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id };
 
     if (status) filter.status = status;
     if (search) {
@@ -43,7 +48,8 @@ const getAllBuyers = async (req, res, next) => {
     const buyers = await Buyer.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate('referredByAgentId', 'name email');
 
     return res.status(200).json({
       success: true,
@@ -62,40 +68,13 @@ const getAllBuyers = async (req, res, next) => {
 };
 
 /**
- * GET /api/buyers/followups
- * Get buyers whose followUpDate is today or overdue.
- */
-const getBuyerFollowUps = async (req, res, next) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const buyers = await Buyer.find({
-      createdBy: req.user._id,
-      followUpDate: { $lte: tomorrow },
-      status: { $ne: 'Closed' },
-    }).sort({ followUpDate: 1 });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Follow-up buyers fetched successfully',
-      data: buyers,
-      pagination: { total: buyers.length },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
  * GET /api/buyers/:id
  */
 const getBuyerById = async (req, res, next) => {
   try {
-    const buyer = await Buyer.findOne({ _id: req.params.id, createdBy: req.user._id });
+    const filter = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id };
+    const buyer = await Buyer.findOne(filter)
+      .populate('referredByAgentId', 'name email');
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
@@ -113,23 +92,25 @@ const getBuyerById = async (req, res, next) => {
 
 /**
  * POST /api/buyers
+ * Admin can set referredByAgentId to indicate which agent referred this buyer.
  */
 const createBuyer = async (req, res, next) => {
   try {
-    const { reminder, ...buyerData } = req.body;
+    const buyerData = req.body;
     const buyerId = generateId('BUY');
-    const buyer = await Buyer.create({ ...buyerData, buyerId, createdBy: req.user._id });
-
-    if (reminder) {
-      const dateTimeString = `${reminder.reminderDate}T${reminder.reminderTime}`;
-      const reminderDateTime = new Date(dateTimeString);
-      await Reminder.create({
-        ...reminder,
-        userId: req.user._id,
-        buyerId: buyer._id,
-        reminderDateTime,
-      });
+    const { code, seqNumber } = await generateEntityCode('Buyer');
+    const finalBuyerData = {
+      ...buyerData,
+      buyerId,
+      code,
+      seqNumber,
+      createdByUserId: req.user._id,
+    };
+    if (req.user.role !== 'admin') {
+      finalBuyerData.referredByAgentId = req.user._id;
     }
+
+    const buyer = await Buyer.create(finalBuyerData);
 
     return res.status(201).json({
       success: true,
@@ -146,41 +127,20 @@ const createBuyer = async (req, res, next) => {
  */
 const updateBuyer = async (req, res, next) => {
   try {
-    const { reminder, ...buyerData } = req.body;
+    const buyerData = req.body;
     delete buyerData.buyerId;
 
     const buyer = await Buyer.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id },
       buyerData,
       {
-      new: true,
-      runValidators: true,
-    });
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
-    }
-
-    if (reminder) {
-      const dateTimeString = `${reminder.reminderDate}T${reminder.reminderTime}`;
-      const reminderDateTime = new Date(dateTimeString);
-      
-      const existingReminder = await Reminder.findOne({ buyerId: buyer._id, userId: req.user._id });
-      if (existingReminder) {
-        await Reminder.findByIdAndUpdate(existingReminder._id, {
-          ...reminder,
-          reminderDateTime,
-        });
-      } else {
-        await Reminder.create({
-          ...reminder,
-          userId: req.user._id,
-          buyerId: buyer._id,
-          reminderDateTime,
-        });
-      }
-    } else if (req.body.hasOwnProperty('reminder') && !reminder) {
-      await Reminder.findOneAndDelete({ buyerId: buyer._id, userId: req.user._id });
     }
 
     return res.status(200).json({
@@ -198,7 +158,8 @@ const updateBuyer = async (req, res, next) => {
  */
 const deleteBuyer = async (req, res, next) => {
   try {
-    const buyer = await Buyer.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
+    const filter = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id };
+    const buyer = await Buyer.findOneAndDelete(filter);
 
     if (!buyer) {
       return res.status(404).json({ success: false, message: 'Buyer not found' });
@@ -230,7 +191,7 @@ const updateBuyerStatus = async (req, res, next) => {
     }
 
     const buyer = await Buyer.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id },
       { status },
       { new: true, runValidators: true }
     );
@@ -251,7 +212,6 @@ const updateBuyerStatus = async (req, res, next) => {
 
 module.exports = {
   getAllBuyers,
-  getBuyerFollowUps,
   getBuyerById,
   createBuyer,
   updateBuyer,

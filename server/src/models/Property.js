@@ -3,20 +3,32 @@ const mongoose = require('mongoose');
 
 const PROPERTY_TYPES = [
   'Land',
+  'Shop',
   'Independent House',
-  'Apartment/Flat',
-  'Commercial Property',
-  'Agricultural Land',
-  'Industrial Property',
-  'Rental Property',
-  'Lease Property',
+  'Flat',
+  'Store',
+  'Garage'
 ];
 
 const propertySchema = new mongoose.Schema(
   {
     propertyId: {
       type: String,
+      required: true,
       unique: true,
+    },
+    code: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    seqNumber: {
+      type: Number,
+    },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller',
+      default: null,
       index: true,
     },
     propertyType: {
@@ -36,24 +48,18 @@ const propertySchema = new mongoose.Schema(
     },
     propertyStatus: {
       type: String,
-      enum: ['Available', 'Sold', 'Rented', 'Leased'],
+      enum: ['Available', 'Sold'],
       default: 'Available',
       index: true,
     },
     purpose: {
       type: String,
-      enum: ['Sale', 'Rent', 'Lease'],
+      enum: ['Sale', 'Rent'],
       required: [true, 'Purpose is required'],
       index: true,
     },
-    ownerName: {
-      type: String,
-      required: [true, 'Owner name is required'],
-      trim: true,
-    },
     contactNumber: {
       type: String,
-      required: [true, 'Contact number is required'],
       trim: true,
     },
     address: {
@@ -61,8 +67,8 @@ const propertySchema = new mongoose.Schema(
       trim: true,
     },
     location: {
-      type: String,
-      trim: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'LocationCode',
       index: true,
     },
     landmark: {
@@ -91,17 +97,37 @@ const propertySchema = new mongoose.Schema(
       enum: [1, 2, 3, 4, 5, null],
       default: null,
       index: true,
+      validate: {
+        validator: function (value) {
+          if (value === null || value === undefined) return true;
+          // In findOneAndUpdate, 'this' refers to the query
+          const type = this.propertyType || (this.getUpdate && this.getUpdate().$set && this.getUpdate().$set.propertyType) || (this.getUpdate && this.getUpdate().propertyType);
+          // If type is not available in the payload during update, we can't strictly validate, but for save it works
+          if (!type) return true;
+          return ['Independent House', 'Flat'].includes(type);
+        },
+        message: 'BHK can only be assigned to Independent House and Flat'
+      }
     },
-    images: [
-      {
-        type: String,
-      },
-    ],
-    createdBy: {
+    mainDoorDirection: {
+      type: String,
+      enum: ['North', 'East', 'West', 'South'],
+    },
+    createdByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
       index: true,
+    },
+    referredByAgentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    yearOfConstruction: {
+      type: Date,
+      default: null,
     },
   },
   {

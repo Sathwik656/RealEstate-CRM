@@ -6,7 +6,7 @@ const {
   updateSeller, deleteSeller, linkProperty, unlinkProperty,
   sellerValidation,
 } = require('../controllers/sellerController');
-const auth = require('../middleware/auth');
+const { auth, authorizeRoles } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 router.use(auth);

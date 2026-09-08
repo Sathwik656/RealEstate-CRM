@@ -6,9 +6,12 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
+import { useAuth } from '@/context/AuthContext';
+
 const COLORS = ['#1a1f2e', '#c9a84c', '#3b82f6', '#10b981', '#6366f1'];
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -44,27 +47,22 @@ export default function DashboardPage() {
       color: 'from-blue-500 to-blue-600',
       bg: 'bg-blue-50',
     },
-    {
-      title: 'Total Sellers',
-      value: statsData?.totalSellers ?? 0,
-      icon: Users,
-      color: 'from-violet-500 to-violet-600',
-      bg: 'bg-violet-50',
-    },
-    {
-      title: 'Total Buyers',
-      value: statsData?.totalBuyers ?? 0,
-      icon: UserSquare2,
-      color: 'from-emerald-500 to-emerald-600',
-      bg: 'bg-emerald-50',
-    },
-    {
-      title: 'Active Rentals',
-      value: statsData?.totalRentals ?? 0,
-      icon: Home,
-      color: 'from-amber-500 to-amber-600',
-      bg: 'bg-amber-50',
-    },
+    ...(user?.role === 'admin' ? [
+      {
+        title: 'Total Sellers',
+        value: statsData?.totalSellers ?? 0,
+        icon: Users,
+        color: 'from-violet-500 to-violet-600',
+        bg: 'bg-violet-50',
+      },
+      {
+        title: 'Total Buyers',
+        value: statsData?.totalBuyers ?? 0,
+        icon: UserSquare2,
+        color: 'from-emerald-500 to-emerald-600',
+        bg: 'bg-emerald-50',
+      }
+    ] : []),
   ];
 
   return (
@@ -76,7 +74,7 @@ export default function DashboardPage() {
       >
         <div className="relative z-10">
           <p className="text-white/60 text-sm font-medium uppercase tracking-wider">Welcome back</p>
-          <h1 className="text-2xl font-display font-bold text-white mt-1">Veenu Real Estate CRM</h1>
+          <h1 className="text-2xl font-display font-bold text-white mt-1">VERANDAH REALITY</h1>
           <p className="text-white/50 text-sm mt-1">Here&apos;s an overview of your business today.</p>
         </div>
         <TrendingUp size={80} className="text-white/5 absolute right-6 top-1/2 -translate-y-1/2" />

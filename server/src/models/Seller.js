@@ -5,8 +5,16 @@ const sellerSchema = new mongoose.Schema(
   {
     sellerId: {
       type: String,
+      required: true,
       unique: true,
-      index: true,
+    },
+    code: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    seqNumber: {
+      type: Number,
     },
     sellerName: {
       type: String,
@@ -26,16 +34,16 @@ const sellerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    propertiesLinked: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Property',
-      },
-    ],
-    createdBy: {
+    createdByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
+    },
+    referredByAgentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
       index: true,
     },
   },

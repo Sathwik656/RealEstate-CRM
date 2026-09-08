@@ -6,23 +6,19 @@ const path = require('path');
 
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-const { startReminderEmailScheduler } = require('./utils/reminderScheduler');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const sellerRoutes = require('./routes/sellerRoutes');
 const buyerRoutes = require('./routes/buyerRoutes');
-const rentalRoutes = require('./routes/rentalRoutes');
-const tenantRoutes = require('./routes/tenantRoutes');
-const leaseRoutes = require('./routes/leaseRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const searchRoutes = require('./routes/searchRoutes');
-const reminderRoutes = require('./routes/reminderRoutes');
+const userRoutes = require('./routes/userRoutes');
+const locationRoutes = require('./routes/locationRoutes');
 
-// Connect to MongoDB and start email reminder scheduler
 connectDB().then(() => {
-  startReminderEmailScheduler();
+  console.log('MongoDB connected');
 });
 
 const app = express();
@@ -55,12 +51,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/buyers', buyerRoutes);
-app.use('/api/rentals', rentalRoutes);
-app.use('/api/tenants', tenantRoutes);
-app.use('/api/leases', leaseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/reminders', reminderRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/locations', locationRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 

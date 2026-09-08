@@ -6,7 +6,7 @@ const {
   createProperty, updateProperty, deleteProperty,
   updatePropertyStatus, propertyValidation,
 } = require('../controllers/propertyController');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 // All property routes require authentication

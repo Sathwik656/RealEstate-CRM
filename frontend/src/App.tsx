@@ -11,11 +11,9 @@ import DashboardPage from '@/pages/DashboardPage';
 import PropertiesPage from '@/pages/PropertiesPage';
 import SellersPage from '@/pages/SellersPage';
 import BuyersPage from '@/pages/BuyersPage';
-import RentalsPage from '@/pages/RentalsPage';
-import TenantsPage from '@/pages/TenantsPage';
-import LeasesPage from '@/pages/LeasesPage';
 import SearchPage from '@/pages/SearchPage';
-import RemindersPage from '@/pages/RemindersPage';
+import AgentsPage from '@/pages/AgentsPage';
+import SettingsPage from '@/pages/SettingsPage';
 
 function App() {
   const [queryClient] = useState(
@@ -56,13 +54,11 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="properties" element={<PropertiesPage />} />
-              <Route path="sellers" element={<SellersPage />} />
-              <Route path="buyers" element={<BuyersPage />} />
-              <Route path="rentals" element={<RentalsPage />} />
-              <Route path="tenants" element={<TenantsPage />} />
-              <Route path="leases" element={<LeasesPage />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="reminders" element={<RemindersPage />} />
+              <Route path="sellers" element={<ProtectedRoute><SellersPage /></ProtectedRoute>} />
+              <Route path="buyers" element={<ProtectedRoute><BuyersPage /></ProtectedRoute>} />
+              <Route path="agents" element={<ProtectedRoute requireAdmin><AgentsPage /></ProtectedRoute>} />
+              <Route path="search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+              <Route path="settings" element={<ProtectedRoute requireAdmin><SettingsPage /></ProtectedRoute>} />
             </Route>
 
             {/* Catch-all */}

@@ -2,7 +2,10 @@
 const { body } = require('express-validator');
 const Property = require('../models/Property');
 const Seller = require('../models/Seller');
+const SellerProperty = require('../models/SellerProperty');
+const LocationCode = require('../models/LocationCode');
 const { generateId } = require('../utils/generateId');
+const { generateEntityCode, reconstructPropertyCode } = require('../utils/generateCode');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -11,18 +14,17 @@ const propertyValidation = [
     .notEmpty()
     .withMessage('Property type is required')
     .isIn([
-      'Land', 'Independent House', 'Apartment/Flat', 'Commercial Property',
-      'Agricultural Land', 'Industrial Property', 'Rental Property', 'Lease Property',
+      'Land', 'Shop', 'Independent House', 'Flat', 'Store', 'Garage'
     ])
     .withMessage('Invalid property type'),
   body('propertyTitle').trim().notEmpty().withMessage('Property title is required'),
   body('purpose')
     .notEmpty()
     .withMessage('Purpose is required')
-    .isIn(['Sale', 'Rent', 'Lease'])
-    .withMessage('Purpose must be Sale, Rent, or Lease'),
-  body('ownerName').optional().trim(),
+    .isIn(['Sale', 'Rent'])
+    .withMessage('Purpose must be Sale or Rent'),
   body('contactNumber').optional().trim(),
+  body('yearOfConstruction').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Invalid date format for yearOfConstruction'),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
@@ -38,12 +40,20 @@ const getAllProperties = async (req, res, next) => {
       location, minPrice, maxPrice, bhk, parking,
     } = req.query;
 
-    const filter = { createdBy: req.user._id };
+    const filter = {};
 
     if (status) filter.propertyStatus = status;
     if (type) filter.propertyType = type;
     if (purpose) filter.purpose = purpose;
-    if (location) filter.location = { $regex: location, $options: 'i' };
+    if (location) {
+      const locDocs = await LocationCode.find({
+        $or: [
+          { location: { $regex: location, $options: 'i' } },
+          { code: { $regex: location, $options: 'i' } }
+        ]
+      }).select('_id');
+      filter.location = { $in: locDocs.map(d => d._id) };
+    }
     if (bhk) filter.bhk = Number(bhk);
     if (parking !== undefined) filter.parkingAvailable = parking === 'true';
     if (minPrice || maxPrice) {
@@ -57,7 +67,9 @@ const getAllProperties = async (req, res, next) => {
     const properties = await Property.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate('referredByAgentId', 'name email')
+      .populate('location');
 
     return res.status(200).json({
       success: true,
@@ -83,12 +95,12 @@ const getPropertyStats = async (req, res, next) => {
   try {
     const [statusStats, typeStats] = await Promise.all([
       Property.aggregate([
-        { $match: { createdBy: req.user._id } },
+        { $match: {} },
         { $group: { _id: '$propertyStatus', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       Property.aggregate([
-        { $match: { createdBy: req.user._id } },
+        { $match: {} },
         { $group: { _id: '$propertyType', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
@@ -118,11 +130,8 @@ const getPropertyById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const property = await Property.findOne({
-      $and: [
-        { $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }] },
-        { createdBy: req.user._id }
-      ]
-    });
+      $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }]
+    }).populate('location');
 
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
@@ -141,49 +150,73 @@ const getPropertyById = async (req, res, next) => {
 /**
  * POST /api/properties
  * Create a new property.
+ * Admin can set referredByAgentId to indicate which agent referred this property.
+ * If sellerId is provided, also creates a SellerProperty junction record.
  */
 const createProperty = async (req, res, next) => {
   try {
     const propertyId = generateId('PROP');
-    let propertyData = { ...req.body, propertyId, createdBy: req.user._id };
-    
+    let propertyData = { ...req.body, propertyId };
+
+    const locDoc = await LocationCode.findById(req.body.location);
+    if (!locDoc) {
+      return res.status(400).json({ success: false, message: 'Invalid location selected' });
+    }
+    const { code, seqNumber } = await generateEntityCode('Property', locDoc.code);
+    propertyData.code = code;
+    propertyData.seqNumber = seqNumber;
+
+    if (req.user.role === 'admin') {
+      propertyData.createdByUserId = req.user._id;
+    }
+
     let seller = null;
 
     if (req.body.sellerId) {
-      // Existing seller
-      seller = await Seller.findOne({ _id: req.body.sellerId, createdBy: req.user._id });
+      // Existing seller — verify ownership
+      seller = await Seller.findById(req.body.sellerId);
       if (!seller) {
         return res.status(404).json({ success: false, message: 'Seller not found' });
       }
-      propertyData.ownerName = propertyData.ownerName || seller.sellerName;
-      propertyData.contactNumber = propertyData.contactNumber || seller.contactNumber;
+      // Use seller contact if not explicitly provided
+      if (!propertyData.contactNumber) {
+        propertyData.contactNumber = seller.contactNumber;
+      }
+      propertyData.sellerId = seller._id;
     } else if (req.body.newSeller) {
-      // Create new seller
+      // Create new seller inline
       const sellerIdGen = generateId('SEL');
+      const { code: sellerCode, seqNumber: sellerSeq } = await generateEntityCode('Seller');
       seller = await Seller.create({
         ...req.body.newSeller,
         sellerId: sellerIdGen,
-        createdBy: req.user._id,
+        code: sellerCode,
+        seqNumber: sellerSeq,
+        createdByUserId: req.user._id,
       });
-      propertyData.ownerName = propertyData.ownerName || seller.sellerName;
-      propertyData.contactNumber = propertyData.contactNumber || seller.contactNumber;
-    }
-
-    if (!propertyData.ownerName || !propertyData.contactNumber) {
-       return res.status(400).json({ success: false, message: 'ownerName and contactNumber are required if not providing a seller' });
+      if (!propertyData.contactNumber) {
+        propertyData.contactNumber = seller.contactNumber;
+      }
+      propertyData.sellerId = seller._id;
     }
 
     const property = await Property.create(propertyData);
 
+    // Create SellerProperty junction record when a seller is linked
     if (seller) {
-      seller.propertiesLinked.push(property._id);
-      await seller.save();
+      await SellerProperty.findOneAndUpdate(
+        { sellerId: seller._id, propertyId: property._id },
+        { sellerId: seller._id, propertyId: property._id },
+        { upsert: true, new: true }
+      );
     }
+
+    const populatedProperty = await Property.findById(property._id).populate('location');
 
     return res.status(201).json({
       success: true,
       message: 'Property created successfully',
-      data: property,
+      data: populatedProperty,
     });
   } catch (err) {
     next(err);
@@ -199,22 +232,33 @@ const updateProperty = async (req, res, next) => {
     // Prevent overriding the auto-generated propertyId
     delete req.body.propertyId;
 
-    const property = await Property.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
-      req.body,
-      {
-      new: true,
-      runValidators: true,
-    });
+    const filter = req.user.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, referredByAgentId: req.user._id };
 
-    if (!property) {
+    const oldProperty = await Property.findOne(filter);
+    if (!oldProperty) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
+
+    if (req.body.location && req.body.location !== oldProperty.location?.toString()) {
+      const locDoc = await LocationCode.findById(req.body.location);
+      if (locDoc) {
+        req.body.code = reconstructPropertyCode(oldProperty.seqNumber, locDoc.code);
+      }
+    }
+
+    // Apply the update
+    const updatedProperty = await Property.findByIdAndUpdate(
+      oldProperty._id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    ).populate('referredByAgentId', 'name email').populate('location');
 
     return res.status(200).json({
       success: true,
       message: 'Property updated successfully',
-      data: property,
+      data: updatedProperty,
     });
   } catch (err) {
     next(err);
@@ -223,15 +267,22 @@ const updateProperty = async (req, res, next) => {
 
 /**
  * DELETE /api/properties/:id
- * Delete a property.
+ * Delete a property and its SellerProperty junction records.
  */
 const deleteProperty = async (req, res, next) => {
   try {
-    const property = await Property.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
+    const filter = req.user.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, referredByAgentId: req.user._id };
+
+    const property = await Property.findOneAndDelete(filter);
 
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
+
+    // Clean up junction records
+    await SellerProperty.deleteMany({ propertyId: property._id });
 
     return res.status(200).json({
       success: true,
@@ -250,7 +301,7 @@ const deleteProperty = async (req, res, next) => {
 const updatePropertyStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['Available', 'Sold', 'Rented', 'Leased'];
+    const validStatuses = ['Available', 'Sold'];
 
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
@@ -259,8 +310,12 @@ const updatePropertyStatus = async (req, res, next) => {
       });
     }
 
+    const filter = req.user.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, referredByAgentId: req.user._id };
+
     const property = await Property.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      filter,
       { propertyStatus: status },
       { new: true, runValidators: true }
     );

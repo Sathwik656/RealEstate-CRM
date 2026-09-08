@@ -7,9 +7,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/properties': 'Properties',
   '/sellers': 'Sellers',
   '/buyers': 'Buyers',
-  '/rentals': 'Rental Properties',
-  '/tenants': 'Tenants',
-  '/leases': 'Lease Agreements',
   '/search': 'Global Search',
 };
 

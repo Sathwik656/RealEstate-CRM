@@ -6,7 +6,7 @@ const {
   registerValidation, loginValidation,
 } = require('../controllers/authController');
 const validate = require('../middleware/validate');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // POST /api/auth/register — public
 router.post('/register', registerValidation, validate, register);

@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
 
 const schema = z.object({
   sellerName: z.string().min(1, 'Required'),
-  contactNumber: z.string().min(10, 'Min 10 digits'),
-  address: z.string().min(1, 'Required'),
+  contactNumber: z.string().min(1, 'Required'),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  address: z.string().optional(),
   note: z.string().optional(),
+  referredByAgentId: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
@@ -17,14 +20,26 @@ interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any
 export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const isEdit = !!initialData;
+
+  const { data: agents } = useQuery({
+    queryKey: ['agents-list'],
+    queryFn: async () => (await api.get('/users/agents')).data.data,
+  });
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: initialData || {},
+    defaultValues: initialData ? {
+      ...initialData,
+      referredByAgentId: initialData.referredByAgentId?._id || initialData.referredByAgentId || '',
+    } : {},
   });
 
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError(null);
+      const payload: any = { ...data };
+      if (!payload.referredByAgentId) delete payload.referredByAgentId;
+
       if (isEdit) {
         await api.put(`/sellers/${initialData._id}`, data);
       } else {
@@ -66,9 +81,23 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
             </div>
             <div className="form-group">
               <label className="form-label">Note (Optional)</label>
-              <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Add a note" />
+              <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Any specific notes about the seller..." />
             </div>
-            <div className="flex justify-end gap-3 pt-2">
+
+            <hr className="border-border md:col-span-2" />
+            <h3 className="font-display font-semibold text-primary md:col-span-2">Agent Referral</h3>
+
+            <div className="form-group md:col-span-2">
+              <label className="form-label">Referred By (Agent)</label>
+              <select {...register('referredByAgentId')} className="form-select">
+                <option value="">-- No Agent Assigned --</option>
+                {agents?.map((agent: any) => (
+                  <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
               <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : (isEdit ? 'Update Seller' : 'Save Seller')}</button>
             </div>

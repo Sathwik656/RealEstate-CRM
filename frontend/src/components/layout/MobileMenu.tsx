@@ -22,10 +22,6 @@ interface MobileMenuProps {
 const menuItems = [
   { name: 'Sellers', to: '/sellers', icon: Users },
   { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
-  { name: 'Rentals', to: '/rentals', icon: Home },
-  { name: 'Tenants', to: '/tenants', icon: UserCircle },
-  { name: 'Leases', to: '/leases', icon: FileText },
-  { name: 'Reminders', to: '/reminders', icon: Bell },
 ];
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
@@ -51,11 +47,9 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-              <TrendingUp size={16} className="text-accent" />
-            </div>
+            <img src="/logo.png" alt="Veenu CRM Logo" className="h-8 w-auto object-contain" />
             <div>
-              <h3 className="font-display font-bold text-primary leading-none">Veenu CRM</h3>
+              <h3 className="font-display font-bold text-primary leading-none tracking-wide">THE VERANDAH</h3>
               <p className="text-xs text-muted mt-0.5">{user?.name || 'Admin'}</p>
             </div>
           </div>

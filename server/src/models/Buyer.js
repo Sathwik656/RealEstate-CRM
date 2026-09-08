@@ -3,21 +3,27 @@ const mongoose = require('mongoose');
 
 const PROPERTY_TYPES = [
   'Land',
+  'Shop',
   'Independent House',
-  'Apartment/Flat',
-  'Commercial Property',
-  'Agricultural Land',
-  'Industrial Property',
-  'Rental Property',
-  'Lease Property',
+  'Flat',
+  'Store',
+  'Garage',
 ];
 
 const buyerSchema = new mongoose.Schema(
   {
     buyerId: {
       type: String,
+      required: true,
       unique: true,
-      index: true,
+    },
+    code: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    seqNumber: {
+      type: Number,
     },
     buyerName: {
       type: String,
@@ -38,13 +44,15 @@ const buyerSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    landmarkPreference: {
-      type: String,
-      trim: true,
-    },
     propertyTypeInterested: {
       type: String,
       enum: PROPERTY_TYPES,
+    },
+    purpose: {
+      type: String,
+      enum: ['Purchase', 'Rent'],
+      required: [true, 'Purpose is required'],
+      index: true,
     },
     budgetMin: {
       type: Number,
@@ -63,15 +71,20 @@ const buyerSchema = new mongoose.Schema(
       enum: [1, 2, 3, 4, 5, null],
       default: null,
       index: true,
+      validate: {
+        validator: function (value) {
+          if (value === null || value === undefined) return true;
+          const type = this.propertyTypeInterested || (this.getUpdate && this.getUpdate().$set && this.getUpdate().$set.propertyTypeInterested) || (this.getUpdate && this.getUpdate().propertyTypeInterested);
+          if (!type) return true;
+          return ['Independent House', 'Flat'].includes(type);
+        },
+        message: 'BHK requirement can only be set when interested in Independent House and Flat'
+      }
     },
     parkingRequirement: {
       type: String,
       enum: ['Open', 'Covered', 'Any'],
       default: 'Any',
-    },
-    followUpDate: {
-      type: Date,
-      index: true,
     },
     remarks: {
       type: String,
@@ -87,10 +100,16 @@ const buyerSchema = new mongoose.Schema(
       default: 'Active',
       index: true,
     },
-    createdBy: {
+    createdByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
+    },
+    referredByAgentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
       index: true,
     },
   },

@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const { body } = require('express-validator');
 const User = require('../models/User');
+const { generateEntityCode } = require('../utils/generateCode');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -11,11 +12,13 @@ const registerValidation = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
+  body('role').isIn(['admin', 'agent']).withMessage('Role must be admin or agent'),
 ];
 
 const loginValidation = [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
+  body('role').isIn(['admin', 'agent']).withMessage('Role must be admin or agent'),
 ];
 
 // ─── Token Generator ──────────────────────────────────────────────────────────
@@ -44,7 +47,14 @@ const register = async (req, res, next) => {
       });
     }
 
-    const user = await User.create({ name, email, password, role });
+    const userData = { name, email, password, role };
+    if (role === 'agent') {
+      const { code, seqNumber } = await generateEntityCode('Agent');
+      userData.code = code;
+      userData.seqNumber = seqNumber;
+    }
+
+    const user = await User.create(userData);
     const token = signToken(user._id);
 
     return res.status(201).json({
@@ -72,13 +82,20 @@ const register = async (req, res, next) => {
  */
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message: 'Invalid email, password, or role.',
+      });
+    }
+
+    if (user.role !== role) {
+      return res.status(401).json({
+        success: false,
+        message: `Invalid role. This user is not a ${role}.`,
       });
     }
 
