@@ -191,7 +191,7 @@ const getPropertyById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const property = await Property.findOne({
-      $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }]
+      $or: [{ propertyId: id }, { code: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }]
     })
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber address note')
