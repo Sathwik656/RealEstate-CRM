@@ -16,6 +16,10 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const userRoutes = require('./routes/userRoutes');
 const locationRoutes = require('./routes/locationRoutes');
+const dealRoutes = require('./routes/dealRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const allotmentRoutes = require('./routes/allotmentRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 connectDB().then(() => {
   console.log('MongoDB connected');
@@ -55,6 +59,10 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/deals', dealRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/allotments', allotmentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 

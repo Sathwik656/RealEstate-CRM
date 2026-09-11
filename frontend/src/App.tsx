@@ -9,11 +9,17 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import PropertiesPage from '@/pages/PropertiesPage';
+import PropertyViewPage from '@/pages/PropertyViewPage';
 import SellersPage from '@/pages/SellersPage';
 import BuyersPage from '@/pages/BuyersPage';
 import SearchPage from '@/pages/SearchPage';
 import AgentsPage from '@/pages/AgentsPage';
+import AgentDetailsPage from '@/pages/AgentDetailsPage';
 import SettingsPage from '@/pages/SettingsPage';
+import DealsPage from '@/pages/DealsPage';
+import DealApprovalsPage from '@/pages/DealApprovalsPage';
+import ReportsPage from '@/pages/ReportsPage';
+import AllotmentsPage from '@/pages/AllotmentsPage';
 
 function App() {
   const [queryClient] = useState(
@@ -54,11 +60,17 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="properties" element={<PropertiesPage />} />
+              <Route path="properties/:propertyCode" element={<PropertyViewPage />} />
               <Route path="sellers" element={<ProtectedRoute><SellersPage /></ProtectedRoute>} />
               <Route path="buyers" element={<ProtectedRoute><BuyersPage /></ProtectedRoute>} />
               <Route path="agents" element={<ProtectedRoute requireAdmin><AgentsPage /></ProtectedRoute>} />
+              <Route path="agents/:id" element={<ProtectedRoute requireAdmin><AgentDetailsPage /></ProtectedRoute>} />
               <Route path="search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-              <Route path="settings" element={<ProtectedRoute requireAdmin><SettingsPage /></ProtectedRoute>} />
+              <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="deals" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
+              <Route path="allotments" element={<ProtectedRoute requireAdmin><AllotmentsPage /></ProtectedRoute>} />
+              <Route path="deal-approvals" element={<ProtectedRoute requireAdmin><DealApprovalsPage /></ProtectedRoute>} />
+              <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             </Route>
 
             {/* Catch-all */}

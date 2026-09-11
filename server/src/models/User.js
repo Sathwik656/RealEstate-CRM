@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'agent'],
       default: 'agent',
     },
+    notificationsEnabled: {
+      type: Boolean,
+      default: false,
+    },
     code: {
       type: String,
       unique: true,

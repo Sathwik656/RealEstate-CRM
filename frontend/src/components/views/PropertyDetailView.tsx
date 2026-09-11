@@ -42,6 +42,8 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
 export function PropertyDetailView({ property: p, onBack, onEdit }: Props) {
   const statusBadge = clsx('badge',
     p.propertyStatus === 'Available' ? 'badge-green' :
+    p.propertyStatus === 'In Allotment' ? 'badge-blue' :
+    p.propertyStatus === 'In Deal' ? 'badge-amber' :
     p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
   );
 
@@ -115,9 +117,23 @@ export function PropertyDetailView({ property: p, onBack, onEdit }: Props) {
 
         {/* Ownership & Referral */}
         <Section title="Ownership & Referral" icon={User}>
-          <Field label="Seller" value={p.sellerId?.sellerName || (p.sellerId ? 'Linked' : undefined)} />
-          <Field label="Referred By (Agent)" value={p.referredByAgentId?.name} />
-          <Field label="Agent Email" value={p.referredByAgentId?.email} />
+          {/* Seller details */}
+          {p.sellerId ? (
+            <>
+              <Field label="Seller Name" value={p.sellerId?.sellerName} />
+              <Field label="Seller Contact" value={p.sellerId?.contactNumber} />
+              {p.sellerId?.address && <Field label="Seller Address" value={p.sellerId.address} />}
+              {p.sellerId?.note && <Field label="Seller Note" value={p.sellerId.note} />}
+            </>
+          ) : (
+            <Field label="Seller" value={undefined} />
+          )}
+          {p.referredByAgentId && (
+            <>
+              <Field label="Referred By (Agent)" value={p.referredByAgentId.name} />
+              <Field label="Agent Email" value={p.referredByAgentId.email} />
+            </>
+          )}
         </Section>
 
         {/* Timestamps */}

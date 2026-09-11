@@ -2,6 +2,7 @@
 const Property = require('../models/Property');
 const Seller = require('../models/Seller');
 const Buyer = require('../models/Buyer');
+const Deal = require('../models/Deal');
 
 /**
  * GET /api/dashboard/stats
@@ -10,6 +11,7 @@ const Buyer = require('../models/Buyer');
 const getDashboardStats = async (req, res, next) => {
   try {
     const propertyFilter = {};
+    const isAdmin = req.user.role === 'admin';
 
     const [
       totalProperties,
@@ -18,13 +20,18 @@ const getDashboardStats = async (req, res, next) => {
       totalSellers,
       totalBuyers,
       activeBuyers,
+      ongoingDeals,
+      pendingApprovals,
     ] = await Promise.all([
       Property.countDocuments(propertyFilter),
       Property.countDocuments({ ...propertyFilter, propertyStatus: 'Available' }),
       Property.countDocuments({ ...propertyFilter, propertyStatus: 'Sold' }),
-      Seller.countDocuments(req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id }),
-      Buyer.countDocuments(req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id }),
-      Buyer.countDocuments(req.user.role === 'admin' ? { status: 'Active' } : { status: 'Active', referredByAgentId: req.user._id }),
+      Seller.countDocuments(isAdmin ? {} : { referredByAgentId: req.user._id }),
+      Buyer.countDocuments(isAdmin ? {} : { referredByAgentId: req.user._id }),
+      Buyer.countDocuments(isAdmin ? { status: 'Active' } : { status: 'Active', referredByAgentId: req.user._id }),
+      // Deal counts — admin sees all, agent sees their own
+      Deal.countDocuments(isAdmin ? { status: 'ongoing' } : { agentId: req.user._id, status: 'ongoing' }),
+      Deal.countDocuments(isAdmin ? { status: 'pending_approval' } : { agentId: req.user._id, status: 'pending_approval' }),
     ]);
 
     return res.status(200).json({
@@ -37,6 +44,8 @@ const getDashboardStats = async (req, res, next) => {
         totalSellers,
         totalBuyers,
         activeBuyers,
+        ongoingDeals,
+        pendingApprovals,
       },
     });
   } catch (err) {

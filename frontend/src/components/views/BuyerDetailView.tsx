@@ -104,10 +104,12 @@ export function BuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         </Section>
 
         {/* Agent Referral */}
-        <Section title="Agent Referral" icon={Tag}>
-          <Field label="Referred By (Agent)" value={b.referredByAgentId?.name} />
-          <Field label="Agent Email" value={b.referredByAgentId?.email} />
-        </Section>
+        {b.referredByAgentId && (
+          <Section title="Agent Referral" icon={Tag}>
+            <Field label="Referred By (Agent)" value={b.referredByAgentId.name} />
+            <Field label="Agent Email" value={b.referredByAgentId.email} />
+          </Section>
+        )}
 
         {/* Notes */}
         <Section title="Notes & Remarks" icon={Calendar}>

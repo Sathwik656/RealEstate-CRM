@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Edit, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Edit, Trash2, Eye } from 'lucide-react';
 import { EditAgent } from '@/components/forms/EditAgent';
 
 export default function AgentsPage() {
@@ -75,10 +76,17 @@ export default function AgentsPage() {
                     <td className="text-muted">{new Date(agent.createdAt).toLocaleDateString()}</td>
                     <td className="text-right">
                       <div className="flex justify-end gap-1">
-                        <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(agent)}>
+                        <Link 
+                          to={`/agents/${agent._id}`}
+                          className="btn-icon hover:text-accent hover:bg-accent/10" 
+                          title="View Agent & Reports"
+                        >
+                          <Eye size={15} />
+                        </Link>
+                        <button className="btn-icon hover:text-blue-600 hover:bg-blue-50" onClick={() => setEditingItem(agent)} title="Edit Agent">
                           <Edit size={15} />
                         </button>
-                        <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(agent._id)}>
+                        <button className="btn-icon hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(agent._id)} title="Delete Agent">
                           <Trash2 size={15} />
                         </button>
                       </div>

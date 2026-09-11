@@ -25,6 +25,7 @@ const Seller         = require('../models/Seller');
 const Buyer          = require('../models/Buyer');
 const SellerProperty = require('../models/SellerProperty');
 const LocationCode   = require('../models/LocationCode');
+const PropertyInterest = require('../models/PropertyInterest');
 
 const { parsePage, parseLimit, buildPagination, FUSE_KEYS, MONGO_SEARCH_FIELDS } =
   require('../utils/searchHelper');
@@ -114,17 +115,45 @@ const searchProperties = async (req, res, next) => {
       baseFilter._id = { $in: links.map((l) => l.propertyId) };
     }
 
+    let extraOrClauses = [];
+    if (q) {
+      const locDocs = await LocationCode.find({
+        $or: [
+          { location: { $regex: q, $options: 'i' } },
+          { code: { $regex: q, $options: 'i' } }
+        ]
+      }).select('_id');
+      if (locDocs.length > 0) {
+        extraOrClauses.push({ location: { $in: locDocs.map(d => d._id) } });
+      }
+    }
+
     const { results, total } = await hybridSearch(
       Property,
       q,
       FUSE_KEYS.property,
       MONGO_SEARCH_FIELDS.property,
       baseFilter,
-      { populate: 'location' }
+      { populate: 'location', extraOrClauses }
     );
 
     const skip  = (page - 1) * limit;
-    const paged = results.slice(skip, skip + limit);
+    let paged = results.slice(skip, skip + limit);
+
+    if (req.user.role === 'agent') {
+      const interests = await PropertyInterest.find({
+        agentId: req.user._id,
+        propertyId: { $in: paged.map(p => p._id) }
+      });
+      const interestedIds = new Set(interests.map(i => i.propertyId.toString()));
+      paged = paged.map(p => {
+        const plainP = p.toObject ? p.toObject() : p;
+        return {
+          ...plainP,
+          isApplied: interestedIds.has(plainP._id.toString())
+        };
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -251,12 +280,25 @@ const searchGlobal = async (req, res, next) => {
 
     const propertyFilter = {};
 
+    let propertyExtraOrClauses = [];
+    if (q) {
+      const locDocs = await LocationCode.find({
+        $or: [
+          { location: { $regex: q, $options: 'i' } },
+          { code: { $regex: q, $options: 'i' } }
+        ]
+      }).select('_id');
+      if (locDocs.length > 0) {
+        propertyExtraOrClauses.push({ location: { $in: locDocs.map(d => d._id) } });
+      }
+    }
+
     const [
       { results: properties, total: propTotal   },
       { results: sellers,    total: sellerTotal  },
       { results: buyers,     total: buyerTotal   },
     ] = await Promise.all([
-      hybridSearch(Property, q, FUSE_KEYS.property, MONGO_SEARCH_FIELDS.property, propertyFilter, { maxResults: limit, populate: 'location' }),
+      hybridSearch(Property, q, FUSE_KEYS.property, MONGO_SEARCH_FIELDS.property, propertyFilter, { maxResults: limit, populate: 'location', extraOrClauses: propertyExtraOrClauses }),
       hybridSearch(Seller, q, FUSE_KEYS.seller, MONGO_SEARCH_FIELDS.seller, req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id }, { maxResults: limit }),
       hybridSearch(Buyer, q, FUSE_KEYS.buyer, MONGO_SEARCH_FIELDS.buyer, req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id }, { maxResults: limit }),
     ]);

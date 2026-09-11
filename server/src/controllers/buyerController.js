@@ -106,9 +106,7 @@ const createBuyer = async (req, res, next) => {
       seqNumber,
       createdByUserId: req.user._id,
     };
-    if (req.user.role !== 'admin') {
-      finalBuyerData.referredByAgentId = req.user._id;
-    }
+
 
     const buyer = await Buyer.create(finalBuyerData);
 

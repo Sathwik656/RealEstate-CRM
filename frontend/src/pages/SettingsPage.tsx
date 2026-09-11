@@ -2,9 +2,10 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import {
-  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle,
+  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle, Bell, Loader2
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ function AddRow({
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -160,6 +162,91 @@ export default function SettingsPage() {
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  // ── Push Notification Settings ─────────────────────────────────────────────
+
+  const { data: notifData, isLoading: isLoadingNotif } = useQuery({
+    queryKey: ['notification-settings'],
+    queryFn: async () => {
+      const res = await api.get('/notifications/settings');
+      return res.data.data;
+    },
+  });
+
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  const handleTogglePush = async () => {
+    if (notifData?.notificationsEnabled) {
+      // Disable
+      setIsSubscribing(true);
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
+        await api.put('/notifications/settings', { notificationsEnabled: false });
+        qc.invalidateQueries({ queryKey: ['notification-settings'] });
+        showSuccess('Push notifications disabled');
+      } catch (err) {
+        console.error('Failed to disable notifications', err);
+        setRowError('Failed to disable notifications');
+      } finally {
+        setIsSubscribing(false);
+      }
+    } else {
+      // Enable
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setRowError('Push notifications are not supported by this browser.');
+        return;
+      }
+      setIsSubscribing(true);
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          setRowError('Notification permission denied by user.');
+          setIsSubscribing(false);
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          const publicVapidKey = notifData?.vapidPublicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY;
+          if (!publicVapidKey) {
+            throw new Error('VAPID public key not found');
+          }
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+          });
+        }
+
+        await api.post('/notifications/subscribe', subscription.toJSON());
+        qc.invalidateQueries({ queryKey: ['notification-settings'] });
+        showSuccess('Push notifications enabled for this device');
+      } catch (err) {
+        console.error('Failed to enable notifications', err);
+        setRowError('Failed to subscribe to push notifications');
+      } finally {
+        setIsSubscribing(false);
+      }
+    }
   };
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -245,7 +332,61 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Location Codes Card */}
+      {/* Push Notifications Card */}
+      <div className="card mb-6">
+        <div className="card-header border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bell size={16} className="text-accent" />
+            <div>
+              <h2 className="font-display font-semibold text-primary">Push Notifications</h2>
+              <p className="text-xs text-muted mt-0.5">Receive notifications when new properties are added</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body p-6">
+          {isLoadingNotif ? (
+            <div className="flex items-center gap-2 text-muted">
+              <Loader2 size={16} className="animate-spin" /> Loading settings...
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-primary">Browser Push Notifications</h3>
+                <p className="text-xs text-muted mt-1 max-w-md">
+                  Enable this to receive alerts directly to this device when properties are created.
+                  You have {notifData?.subscriptionCount || 0} active device(s) subscribed.
+                </p>
+                {rowError && !addingNew && !editingId && (
+                  <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    <AlertCircle size={12} /> {rowError}
+                  </p>
+                )}
+              </div>
+              <button
+                className={clsx(
+                  "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
+                  notifData?.notificationsEnabled ? "bg-accent" : "bg-surface-alt",
+                  isSubscribing && "opacity-50 cursor-not-allowed"
+                )}
+                onClick={handleTogglePush}
+                disabled={isSubscribing}
+              >
+                <span className="sr-only">Toggle notifications</span>
+                <span
+                  aria-hidden="true"
+                  className={clsx(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                    notifData?.notificationsEnabled ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Location Codes Card (Admin Only) */}
+      {user?.role === 'admin' && (
       <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-2">
@@ -375,6 +516,7 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

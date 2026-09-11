@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllProperties, getPropertyStats, getPropertyById,
+  getAllProperties, exportProperties, getPropertyStats, getPropertyById,
   createProperty, updateProperty, deleteProperty,
   updatePropertyStatus, propertyValidation,
 } = require('../controllers/propertyController');
@@ -14,6 +14,7 @@ router.use(auth);
 
 // IMPORTANT: Specific routes before parameterized routes
 router.get('/stats', getPropertyStats);
+router.get('/export', exportProperties);
 router.get('/', getAllProperties);
 router.get('/:id', getPropertyById);
 router.post('/', propertyValidation, validate, createProperty);

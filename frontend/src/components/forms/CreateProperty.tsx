@@ -31,6 +31,7 @@ interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any
 
 export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showReferral, setShowReferral] = useState(!!initialData?.referredByAgentId);
   const isEdit = !!initialData;
 
   const { data: sellers, isLoading: loadingSellers } = useQuery({
@@ -249,18 +250,28 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
               </div>
             )}
 
-            <hr className="border-border" />
-            <h3 className="font-display font-semibold text-primary">Agent Referral</h3>
+            {!showReferral ? (
+              <div className="pt-2">
+                <button type="button" onClick={() => setShowReferral(true)} className="btn-outline">
+                  + Add Referral
+                </button>
+              </div>
+            ) : (
+              <>
+                <hr className="border-border" />
+                <h3 className="font-display font-semibold text-primary">Agent Referral</h3>
 
-            <div className="form-group">
-              <label className="form-label">Referred By (Agent)</label>
-              <select {...register('referredByAgentId')} className="form-select">
-                <option value="">-- No Agent Assigned --</option>
-                {agents?.map((agent: any) => (
-                  <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
-                ))}
-              </select>
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Referred By</label>
+                  <select {...register('referredByAgentId')} className="form-select">
+                    <option value="">Select Agent ▼</option>
+                    {agents?.map((agent: any) => (
+                      <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>

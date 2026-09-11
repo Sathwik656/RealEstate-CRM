@@ -38,6 +38,7 @@ const SEARCH_FIELDS = {
     'address',
     'propertyDescription',
     'ownerName',
+    'code',
   ],
 
   /**
@@ -87,6 +88,7 @@ const FUSE_KEYS = {
     { name: 'propertyDescription', weight: 0.08 },
     { name: 'address', weight: 0.05 },
     { name: 'landmark', weight: 0.02 },
+    { name: 'code', weight: 0.20 },
   ],
 
   /**

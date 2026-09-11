@@ -4,8 +4,11 @@ const Property = require('../models/Property');
 const Seller = require('../models/Seller');
 const SellerProperty = require('../models/SellerProperty');
 const LocationCode = require('../models/LocationCode');
+const Deal = require('../models/Deal');
+const PropertyInterest = require('../models/PropertyInterest');
 const { generateId } = require('../utils/generateId');
 const { generateEntityCode, reconstructPropertyCode } = require('../utils/generateCode');
+const exceljs = require('exceljs');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -33,34 +36,77 @@ const propertyValidation = [
  * GET /api/properties
  * Get all properties with filters and pagination.
  */
+const buildPropertyFilter = async (req) => {
+  const {
+    status, type, purpose,
+    location, locationCode, minPrice, maxPrice, bhk, parking,
+  } = req.query;
+
+  let filter = {};
+
+  if (req.user.role === 'agent') {
+    const agentDeals = await Deal.find({ agentId: req.user._id, status: { $in: ['ongoing', 'pending_approval'] } }).select('propertyId');
+    const inDealPropertyIds = agentDeals.map(d => d.propertyId);
+    filter.$or = [
+      { propertyStatus: { $in: ['Available', 'In Allotment'] } },
+      { _id: { $in: inDealPropertyIds }, propertyStatus: 'In Deal' },
+    ];
+  }
+
+  if (status) {
+    if (req.user.role === 'agent') {
+      delete filter.$or;
+      if (status === 'Available') {
+        filter.propertyStatus = { $in: ['Available', 'In Allotment'] };
+      } else if (status === 'In Deal') {
+        const agentDeals = await Deal.find({ agentId: req.user._id, status: { $in: ['ongoing', 'pending_approval'] } }).select('propertyId');
+        filter._id = { $in: agentDeals.map(d => d.propertyId) };
+        filter.propertyStatus = 'In Deal';
+      } else {
+        filter.propertyStatus = status;
+      }
+    } else {
+      filter.propertyStatus = status;
+    }
+  }
+
+  if (type) filter.propertyType = type;
+  if (purpose) filter.purpose = purpose;
+  
+  if (location) {
+    const locDocs = await LocationCode.find({
+      $or: [
+        { location: { $regex: location, $options: 'i' } },
+        { code: { $regex: location, $options: 'i' } }
+      ]
+    }).select('_id');
+    filter.location = { $in: locDocs.map(d => d._id) };
+  }
+  
+  if (locationCode) {
+    const locDocs = await LocationCode.find({ code: locationCode.toUpperCase() }).select('_id');
+    filter.location = { $in: locDocs.map(d => d._id) };
+  }
+  
+  if (bhk) filter.bhk = Number(bhk);
+  if (parking !== undefined) filter.parkingAvailable = parking === 'true';
+  if (minPrice || maxPrice) {
+    filter.price = {};
+    if (minPrice) filter.price.$gte = Number(minPrice);
+    if (maxPrice) filter.price.$lte = Number(maxPrice);
+  }
+
+  return filter;
+};
+
+/**
+ * GET /api/properties
+ * Get all properties with filters and pagination.
+ */
 const getAllProperties = async (req, res, next) => {
   try {
-    const {
-      page = 1, limit = 10, status, type, purpose,
-      location, minPrice, maxPrice, bhk, parking,
-    } = req.query;
-
-    const filter = {};
-
-    if (status) filter.propertyStatus = status;
-    if (type) filter.propertyType = type;
-    if (purpose) filter.purpose = purpose;
-    if (location) {
-      const locDocs = await LocationCode.find({
-        $or: [
-          { location: { $regex: location, $options: 'i' } },
-          { code: { $regex: location, $options: 'i' } }
-        ]
-      }).select('_id');
-      filter.location = { $in: locDocs.map(d => d._id) };
-    }
-    if (bhk) filter.bhk = Number(bhk);
-    if (parking !== undefined) filter.parkingAvailable = parking === 'true';
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
+    const { page = 1, limit = 10 } = req.query;
+    const filter = await buildPropertyFilter(req);
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Property.countDocuments(filter);
@@ -69,12 +115,27 @@ const getAllProperties = async (req, res, next) => {
       .skip(skip)
       .limit(Number(limit))
       .populate('referredByAgentId', 'name email')
-      .populate('location');
+      .populate('location')
+      .populate('sellerId', 'sellerName contactNumber address note');
+
+    let propertiesData = properties.map(p => p.toJSON());
+
+    if (req.user.role === 'agent') {
+      const interests = await PropertyInterest.find({
+        agentId: req.user._id,
+        propertyId: { $in: propertiesData.map(p => p._id) }
+      });
+      const interestedIds = new Set(interests.map(i => i.propertyId.toString()));
+      propertiesData = propertiesData.map(p => ({
+        ...p,
+        isApplied: interestedIds.has(p._id.toString())
+      }));
+    }
 
     return res.status(200).json({
       success: true,
       message: 'Properties fetched successfully',
-      data: properties,
+      data: propertiesData,
       pagination: {
         total,
         page: Number(page),
@@ -131,7 +192,10 @@ const getPropertyById = async (req, res, next) => {
     const { id } = req.params;
     const property = await Property.findOne({
       $or: [{ propertyId: id }, { _id: id.match(/^[a-f\d]{24}$/i) ? id : null }]
-    }).populate('location');
+    })
+      .populate('location')
+      .populate('sellerId', 'sellerName contactNumber address note')
+      .populate('referredByAgentId', 'name email');
 
     if (!property) {
       return res.status(404).json({ success: false, message: 'Property not found' });
@@ -212,6 +276,12 @@ const createProperty = async (req, res, next) => {
     }
 
     const populatedProperty = await Property.findById(property._id).populate('location');
+
+    // Send push notifications to eligible agents (fire-and-forget)
+    const { notifyAllEligibleAgents } = require('../services/pushNotificationService');
+    notifyAllEligibleAgents(populatedProperty, req.user._id).catch(err => {
+      console.error('Push notification error:', err);
+    });
 
     return res.status(201).json({
       success: true,
@@ -301,7 +371,7 @@ const deleteProperty = async (req, res, next) => {
 const updatePropertyStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['Available', 'Sold'];
+    const validStatuses = ['Available', 'In Deal', 'Sold'];
 
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
@@ -334,8 +404,77 @@ const updatePropertyStatus = async (req, res, next) => {
   }
 };
 
+const exportProperties = async (req, res, next) => {
+  try {
+    const filter = await buildPropertyFilter(req);
+    const properties = await Property.find(filter)
+      .sort({ createdAt: -1 })
+      .populate('referredByAgentId', 'name email')
+      .populate('location')
+      .populate('sellerId', 'sellerName contactNumber');
+
+    const workbook = new exceljs.Workbook();
+    const worksheet = workbook.addWorksheet('Properties');
+
+    worksheet.columns = [
+      { header: 'Property Code', key: 'code', width: 20 },
+      { header: 'Property Title', key: 'propertyTitle', width: 30 },
+      { header: 'Type', key: 'propertyType', width: 15 },
+      { header: 'Purpose', key: 'purpose', width: 10 },
+      { header: 'Status', key: 'propertyStatus', width: 15 },
+      { header: 'Location', key: 'locationName', width: 20 },
+      { header: 'Location Code', key: 'locationCode', width: 15 },
+      { header: 'Address', key: 'address', width: 40 },
+      { header: 'Price', key: 'price', width: 15 },
+      { header: 'Area', key: 'area', width: 15 },
+      { header: 'BHK', key: 'bhk', width: 10 },
+      { header: 'Parking', key: 'parking', width: 10 },
+      { header: 'Seller/Owner', key: 'sellerName', width: 20 },
+      { header: 'Contact', key: 'contact', width: 15 },
+      { header: 'Referred By', key: 'referredBy', width: 20 },
+      { header: 'Created Date', key: 'createdAt', width: 20 },
+    ];
+
+    properties.forEach(p => {
+      worksheet.addRow({
+        code: p.code || '',
+        propertyTitle: p.propertyTitle || '',
+        propertyType: p.propertyType || '',
+        purpose: p.purpose || '',
+        propertyStatus: p.propertyStatus || '',
+        locationName: p.location ? p.location.location : '',
+        locationCode: p.location ? p.location.code : '',
+        address: p.address || '',
+        price: p.price || '',
+        area: p.area || '',
+        bhk: p.bhk || '',
+        parking: p.parkingAvailable ? 'Yes' : 'No',
+        sellerName: p.sellerId ? p.sellerId.sellerName : (p.ownerName || ''),
+        contact: p.sellerId ? p.sellerId.contactNumber : (p.contactNumber || ''),
+        referredBy: p.referredByAgentId ? p.referredByAgentId.name : '',
+        createdAt: p.createdAt ? p.createdAt.toISOString().split('T')[0] : '',
+      });
+    });
+
+    const { locationCode, status } = req.query;
+    let filename = 'Properties_Export';
+    if (locationCode) filename = `Properties_${locationCode.toUpperCase()}`;
+    if (status) filename += `_${status}`;
+    filename += '.xlsx';
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllProperties,
+  exportProperties,
   getPropertyStats,
   getPropertyById,
   createProperty,

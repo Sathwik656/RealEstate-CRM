@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import api from '@/lib/api';
-import { Building2, Home, Users, UserSquare2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Building2, Users, UserSquare2, TrendingUp, Handshake, ClipboardCheck } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -46,6 +47,7 @@ export default function DashboardPage() {
       icon: Building2,
       color: 'from-blue-500 to-blue-600',
       bg: 'bg-blue-50',
+      link: '/properties',
     },
     ...(user?.role === 'admin' ? [
       {
@@ -54,6 +56,7 @@ export default function DashboardPage() {
         icon: Users,
         color: 'from-violet-500 to-violet-600',
         bg: 'bg-violet-50',
+        link: '/sellers',
       },
       {
         title: 'Total Buyers',
@@ -61,8 +64,42 @@ export default function DashboardPage() {
         icon: UserSquare2,
         color: 'from-emerald-500 to-emerald-600',
         bg: 'bg-emerald-50',
-      }
-    ] : []),
+        link: '/buyers',
+      },
+      {
+        title: 'Pending Approvals',
+        value: statsData?.pendingApprovals ?? 0,
+        icon: ClipboardCheck,
+        color: 'from-amber-500 to-amber-600',
+        bg: 'bg-amber-50',
+        link: '/deal-approvals',
+      },
+      {
+        title: 'Ongoing Deals',
+        value: statsData?.ongoingDeals ?? 0,
+        icon: Handshake,
+        color: 'from-orange-500 to-orange-600',
+        bg: 'bg-orange-50',
+        link: '/deals',
+      },
+    ] : [
+      {
+        title: 'My Ongoing Deals',
+        value: statsData?.ongoingDeals ?? 0,
+        icon: Handshake,
+        color: 'from-amber-500 to-amber-600',
+        bg: 'bg-amber-50',
+        link: '/deals',
+      },
+      {
+        title: 'Pending Approval',
+        value: statsData?.pendingApprovals ?? 0,
+        icon: ClipboardCheck,
+        color: 'from-orange-500 to-orange-600',
+        bg: 'bg-orange-50',
+        link: '/deals',
+      },
+    ]),
   ];
 
   return (
@@ -83,7 +120,7 @@ export default function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {statCards.map((stat, i) => (
-          <div key={i} className="stat-card">
+          <Link key={i} to={stat.link} className="stat-card hover:border-accent/50">
             <div>
               <p className="stat-label">{stat.title}</p>
               <p className="stat-value">{stat.value}</p>
@@ -97,7 +134,7 @@ export default function DashboardPage() {
                 <stat.icon size={16} className="text-white" />
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

@@ -24,6 +24,30 @@ const getAllAgents = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get agent by ID
+ * @route   GET /api/users/agents/:id
+ * @access  Private/Admin
+ */
+const getAgentById = async (req, res, next) => {
+  try {
+    const agent = await User.findOne({ _id: req.params.id, role: 'agent' }).select('-password');
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Agent not found.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: agent,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Update agent details
  * @route   PUT /api/users/agents/:id
  * @access  Private/Admin
@@ -97,6 +121,7 @@ const deleteAgent = async (req, res, next) => {
 
 module.exports = {
   getAllAgents,
+  getAgentById,
   updateAgent,
   deleteAgent,
 };

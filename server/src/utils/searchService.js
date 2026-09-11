@@ -219,7 +219,7 @@ const buildEnhancedMongoOr = (q, fields) => {
  * @param {object}   baseFilter
  * @returns {object}
  */
-const buildCandidateFilter = (q, mongoFields, baseFilter) => {
+const buildCandidateFilter = (q, mongoFields, baseFilter, extraOrClauses = []) => {
   if (!q) return baseFilter;
 
   const bhkInfo   = normalizeBhk(q);
@@ -240,6 +240,10 @@ const buildCandidateFilter = (q, mongoFields, baseFilter) => {
       orClauses.push({ bhk: bhkInfo.digit });
       orClauses.push({ bhkRequirement: bhkInfo.digit });
     }
+  }
+
+  if (extraOrClauses && extraOrClauses.length > 0) {
+    orClauses.push(...extraOrClauses);
   }
 
   // Merge with baseFilter — avoid MongoDB $or conflict
@@ -417,6 +421,7 @@ const hybridSearch = async (Model, q, fuseKeys, mongoFields, baseFilter, opts = 
     candidateLimit = CANDIDATE_LIMIT,
     maxResults     = MAX_RESULTS,
     populate       = null,
+    extraOrClauses = [],
   } = opts;
 
   const normalised = normalizeQuery(q);
@@ -440,7 +445,7 @@ const hybridSearch = async (Model, q, fuseKeys, mongoFields, baseFilter, opts = 
   }
 
   // ── Pass 1: text-match candidates (regex + n-gram enhanced) ─────────────
-  const textFilter = buildCandidateFilter(normalised, mongoFields, baseFilter);
+  const textFilter = buildCandidateFilter(normalised, mongoFields, baseFilter, extraOrClauses);
   let textQuery    = Model.find(textFilter).sort({ createdAt: -1 }).limit(candidateLimit).lean();
   if (populate) textQuery = textQuery.populate(populate);
 

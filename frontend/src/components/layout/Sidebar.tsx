@@ -4,15 +4,12 @@ import {
   Building2,
   Users,
   UserSquare2,
-  Home,
-  UserCircle,
-  FileText,
-  Search,
-  TrendingUp,
-  Bell,
-  Download,
   UserCog,
+  Search,
   Settings,
+  Handshake,
+  ClipboardCheck,
+  FileText,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -23,17 +20,23 @@ const navItems = [
   { name: 'Properties', to: '/properties', icon: Building2 },
   { name: 'Sellers', to: '/sellers', icon: Users },
   { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
+  { name: 'My Deals', to: '/deals', icon: Handshake, requireAgent: true },
+  { name: 'Allotment Requests', to: '/allotments', icon: Users, requireAdmin: true },
+  { name: 'Deal Approvals', to: '/deal-approvals', icon: ClipboardCheck, requireAdmin: true },
+  { name: 'Reports', to: '/reports', icon: FileText },
   { name: 'Agents', to: '/agents', icon: UserCog, requireAdmin: true },
   { name: 'Global Search', to: '/search', icon: Search },
-  { name: 'Settings', to: '/settings', icon: Settings, requireAdmin: true },
+  { name: 'Settings', to: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const { user } = useAuth();
-  
-  const visibleNavItems = navItems.filter(item => 
-    !item.requireAdmin || user?.role === 'admin'
-  );
+
+  const visibleNavItems = navItems.filter(item => {
+    if (item.requireAdmin && user?.role !== 'admin') return false;
+    if (item.requireAgent && user?.role !== 'agent') return false;
+    return true;
+  });
   return (
     <aside
       className="w-64 flex-shrink-0 flex flex-col h-full"
@@ -82,22 +85,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* App Download Link */}
-      <div className="px-3 pb-4">
-        <a
-          href={import.meta.env.VITE_APP_DOWNLOAD_URL || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10"
-        >
-          <Download
-            size={18}
-            className="flex-shrink-0 text-white/60 transition-colors group-hover:text-white/80"
-          />
-          <span>Download App</span>
-        </a>
-      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-white/10">

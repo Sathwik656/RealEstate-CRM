@@ -61,7 +61,26 @@ const reconstructPropertyCode = (existingSeqNumber, newLocationCode) => {
   return `TVMP-${yy}-${newLocationCode}-${seqStr}`;
 };
 
+/**
+ * Generates a Deal ID.
+ * Format: DEAL-[deal sequence]
+ * 
+ * @returns {Promise<string>}
+ */
+const generateDealCode = async () => {
+  const counter = await Counter.findByIdAndUpdate(
+    { _id: 'Deal' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
+  const seqStr = String(counter.seq).padStart(5, '0'); // e.g., '00001'
+
+  return `DEAL-${seqStr}`;
+};
+
 module.exports = {
   generateEntityCode,
-  reconstructPropertyCode
+  reconstructPropertyCode,
+  generateDealCode
 };

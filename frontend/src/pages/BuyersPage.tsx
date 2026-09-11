@@ -94,7 +94,7 @@ export default function BuyersPage() {
                       <td className="text-muted font-medium">{b.bhkRequirement ? `${b.bhkRequirement} BHK` : '—'}</td>
                       <td className="text-muted">{b.preferredLocation}</td>
                       <td className="font-medium">₹{b.budgetMax?.toLocaleString('en-IN') || 'N/A'}</td>
-                      <td><span className="text-sm text-muted">{b.referredByAgentId?.name || '—'}</span></td>
+                      <td><span className="text-sm text-muted">{b.referredByAgentId?.name || ''}</span></td>
                       <td>
                         <span className={clsx('badge',
                           b.status === 'Active' ? 'badge-green' :

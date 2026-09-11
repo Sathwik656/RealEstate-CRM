@@ -71,10 +71,12 @@ export function SellerDetailView({ seller: s, onBack, onEdit }: Props) {
         </Section>
 
         {/* Agent Referral */}
-        <Section title="Agent Referral" icon={Tag}>
-          <Field label="Referred By (Agent)" value={s.referredByAgentId?.name} />
-          <Field label="Agent Email" value={s.referredByAgentId?.email} />
-        </Section>
+        {s.referredByAgentId && (
+          <Section title="Agent Referral" icon={Tag}>
+            <Field label="Referred By (Agent)" value={s.referredByAgentId.name} />
+            <Field label="Agent Email" value={s.referredByAgentId.email} />
+          </Section>
+        )}
 
         {/* Notes - full width */}
         <div className="lg:col-span-2">

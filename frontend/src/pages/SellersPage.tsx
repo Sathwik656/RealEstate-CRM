@@ -86,7 +86,7 @@ export default function SellersPage() {
                       </td>
                       <td className="text-muted">{s.contactNumber}</td>
                       <td className="text-muted max-w-xs truncate">{s.address || '—'}</td>
-                      <td><span className="text-sm text-muted">{s.referredByAgentId?.name || '—'}</span></td>
+                      <td><span className="text-sm text-muted">{s.referredByAgentId?.name || ''}</span></td>
                       <td className="text-muted max-w-[150px] truncate" title={s.note}>{s.note || '—'}</td>
                       <td className="text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>

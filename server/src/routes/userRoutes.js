@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllAgents,
+  getAgentById,
   updateAgent,
   deleteAgent,
 } = require('../controllers/userController');
@@ -14,6 +15,7 @@ router.use(authorizeRoles('admin'));
 
 // Agent Management Routes
 router.get('/agents', getAllAgents);
+router.get('/agents/:id', getAgentById);
 router.put('/agents/:id', updateAgent);
 router.delete('/agents/:id', deleteAgent);
 

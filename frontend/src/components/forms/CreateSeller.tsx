@@ -19,6 +19,7 @@ interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any
 
 export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showReferral, setShowReferral] = useState(!!initialData?.referredByAgentId);
   const isEdit = !!initialData;
 
   const { data: agents } = useQuery({
@@ -84,18 +85,28 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
               <textarea {...register('note')} rows={3} className="form-input resize-none" placeholder="Any specific notes about the seller..." />
             </div>
 
-            <hr className="border-border md:col-span-2" />
-            <h3 className="font-display font-semibold text-primary md:col-span-2">Agent Referral</h3>
+            {!showReferral ? (
+              <div className="md:col-span-2 pt-2">
+                <button type="button" onClick={() => setShowReferral(true)} className="btn-outline">
+                  + Add Referral
+                </button>
+              </div>
+            ) : (
+              <>
+                <hr className="border-border md:col-span-2" />
+                <h3 className="font-display font-semibold text-primary md:col-span-2">Agent Referral</h3>
 
-            <div className="form-group md:col-span-2">
-              <label className="form-label">Referred By (Agent)</label>
-              <select {...register('referredByAgentId')} className="form-select">
-                <option value="">-- No Agent Assigned --</option>
-                {agents?.map((agent: any) => (
-                  <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
-                ))}
-              </select>
-            </div>
+                <div className="form-group md:col-span-2">
+                  <label className="form-label">Referred By</label>
+                  <select {...register('referredByAgentId')} className="form-select">
+                    <option value="">Select Agent ▼</option>
+                    {agents?.map((agent: any) => (
+                      <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 mt-6">
               <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>

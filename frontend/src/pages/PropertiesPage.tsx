@@ -1,38 +1,104 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Eye, Handshake, Download } from 'lucide-react';
 import clsx from 'clsx';
 import { CreateProperty } from '@/components/forms/CreateProperty';
 import { PropertyDetailView } from '@/components/views/PropertyDetailView';
+import { useAuth } from '@/context/AuthContext';
 
 export default function PropertiesPage() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState('all');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [viewingItem, setViewingItem] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['properties', page, statusFilter, searchQuery],
+    queryKey: ['properties', page, statusFilter, searchQuery, searchMode],
     queryFn: async () => {
-      const endpoint = searchQuery ? '/search/properties' : '/properties';
-      const res = await api.get(endpoint, {
-        params: { page, limit: 10, status: statusFilter || undefined, q: searchQuery || undefined },
-      });
+      const endpoint = (searchQuery && searchMode === 'all') ? '/search/properties' : '/properties';
+      
+      const params: any = { page, limit: 10, status: statusFilter || undefined };
+      if (searchQuery) {
+        if (searchMode === 'location') {
+          params.locationCode = searchQuery;
+        } else {
+          params.q = searchQuery;
+        }
+      }
+
+      const res = await api.get(endpoint, { params });
       return res.data;
     },
   });
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this property?')) return;
+    if (!confirm('Are you sure you want to delete this property?')) return;
     try {
       await api.delete(`/properties/${id}`);
       refetch();
-    } catch {
-      alert('Failed to delete property');
+    } catch (err) {
+      console.error('Failed to delete property:', err);
     }
+  };
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery && searchMode === 'location') {
+        params.append('locationCode', searchQuery);
+      }
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+      
+      const res = await api.get('/properties/export?' + params.toString(), { responseType: 'blob' });
+      
+      let filename = 'Properties_Export.xlsx';
+      const disposition = res.headers['content-disposition'] as string | undefined;
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+
+      const contentType = (res.headers['content-type'] as string) || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const blob = new Blob([res.data], { type: contentType });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error('Failed to export properties:', err);
+    }
+  };
+
+  const expressInterestMutation = useMutation({
+    mutationFn: (propertyId: string) => api.post(`/allotments/${propertyId}/interest`),
+    onSuccess: () => {
+      setExpressingInterestId(null);
+      refetch();
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      alert('Interest registered successfully! Admin will review the allotment.');
+    },
+    onError: (e: any) => {
+      setExpressingInterestId(null);
+      alert(e?.response?.data?.message || 'Failed to express interest. The property may no longer be available.');
+    },
+  });
+
+  const handleExpressInterest = (propertyId: string) => {
+    if (!window.confirm('Express interest in this property? It will go into Allotment for the Admin to review.')) return;
+    setExpressingInterestId(propertyId);
+    expressInterestMutation.mutate(propertyId);
   };
 
   if (isCreating || editingItem) {
@@ -77,12 +143,20 @@ export default function PropertiesPage() {
               </div>
               <input
                 type="text"
-                placeholder="Search properties..."
+                placeholder={searchMode === 'location' ? "Enter Location Code..." : "Search properties..."}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
                 className="form-input pl-10 w-full"
               />
             </div>
+            <select
+              value={searchMode}
+              onChange={(e) => { setSearchMode(e.target.value); setPage(1); }}
+              className="form-select w-full sm:w-44"
+            >
+              <option value="all">Search All</option>
+              <option value="location">By Location Code</option>
+            </select>
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
@@ -90,8 +164,17 @@ export default function PropertiesPage() {
             >
               <option value="">All Statuses</option>
               <option value="Available">Available</option>
+              <option value="In Deal">In Deal</option>
               <option value="Sold">Sold</option>
             </select>
+            {searchMode === 'location' && searchQuery && data?.data?.length > 0 && (
+              <button 
+                className="btn-outline flex items-center gap-2"
+                onClick={handleExport}
+              >
+                <Download size={16} /> Export Excel
+              </button>
+            )}
           </div>
           <span className="text-sm text-muted whitespace-nowrap">
             {data?.pagination?.total ?? 0} properties
@@ -106,16 +189,15 @@ export default function PropertiesPage() {
                 <th>Type &amp; Purpose</th>
                 <th>Price &amp; Area</th>
                 <th>Location</th>
-                <th>Referred By</th>
                 <th>Status</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted">Loading properties...</td></tr>
+                <tr><td colSpan={6} className="py-12 text-center text-muted">Loading properties...</td></tr>
               ) : !data?.data?.length ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted">No properties found.</td></tr>
+                <tr><td colSpan={6} className="py-12 text-center text-muted">No properties found.</td></tr>
               ) : data.data.map((p: any) => (
                 <tr
                   key={p._id}
@@ -143,13 +225,11 @@ export default function PropertiesPage() {
                     )}
                   </td>
                   <td>
-                    <span className="text-sm text-muted">{p.referredByAgentId?.name || '—'}</span>
-                  </td>
-                  <td>
                     <span className={clsx('badge',
                       p.propertyStatus === 'Available' ? 'badge-green' :
-                        p.propertyStatus === 'Sold' ? 'badge-red' :
-                          p.propertyStatus === 'Rented' ? 'badge-blue' : 'badge-gray'
+                        p.propertyStatus === 'In Allotment' ? 'badge-blue' :
+                          p.propertyStatus === 'In Deal' ? 'badge-amber' :
+                            p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
                     )}>
                       {p.propertyStatus}
                     </span>
@@ -163,20 +243,37 @@ export default function PropertiesPage() {
                       >
                         <Eye size={15} />
                       </button>
-                      <button
-                        className="btn-icon hover:text-blue-600 hover:bg-blue-50"
-                        title="Edit"
-                        onClick={() => setEditingItem(p)}
-                      >
-                        <Edit size={15} />
-                      </button>
-                      <button
-                        className="btn-icon hover:text-red-600 hover:bg-red-50"
-                        title="Delete"
-                        onClick={() => handleDelete(p._id)}
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {/* Express Interest — agent only, available or in-allotment properties only */}
+                      {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && (
+                        <button
+                          className={clsx("btn btn-sm", p.isApplied ? "bg-emerald-500/10 text-emerald-600 cursor-default hover:bg-emerald-500/10" : "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50")}
+                          title={p.isApplied ? "You have already applied" : "Express interest in this property"}
+                          disabled={p.isApplied || expressingInterestId === p._id || expressInterestMutation.isPending}
+                          onClick={() => !p.isApplied && handleExpressInterest(p._id)}
+                        >
+                          <Handshake size={13} />
+                          {p.isApplied ? 'Applied' : 'Interested'}
+                        </button>
+                      )}
+                      {/* Edit & Delete — admin only */}
+                      {user?.role === 'admin' && (
+                        <>
+                          <button
+                            className="btn-icon hover:text-blue-600 hover:bg-blue-50"
+                            title="Edit"
+                            onClick={() => setEditingItem(p)}
+                          >
+                            <Edit size={15} />
+                          </button>
+                          <button
+                            className="btn-icon hover:text-red-600 hover:bg-red-50"
+                            title="Delete"
+                            onClick={() => handleDelete(p._id)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
