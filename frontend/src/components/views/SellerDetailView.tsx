@@ -2,6 +2,7 @@ import {
   ArrowLeft, Edit, User, MapPin, Phone, Calendar, Tag,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   seller: any;
@@ -37,7 +38,8 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
-export function SellerDetailView({ seller: s, onBack, onEdit }: Props) {
+function DesktopSellerDetailView({ seller: s, onBack, onEdit }: Props) {
+  const { user } = useAuth();
   const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined;
 
@@ -56,7 +58,13 @@ export function SellerDetailView({ seller: s, onBack, onEdit }: Props) {
             </div>
           </div>
         </div>
-        <button onClick={onEdit} className="btn-outline btn-sm flex items-center gap-1.5 flex-shrink-0">
+        <button 
+          onClick={onEdit} 
+          className={clsx(
+            "btn-outline btn-sm items-center gap-1.5 flex-shrink-0",
+            user?.role !== 'admin' ? "hidden lg:flex" : "flex"
+          )}
+        >
           <Edit size={14} /> Edit
         </button>
       </div>
@@ -92,5 +100,91 @@ export function SellerDetailView({ seller: s, onBack, onEdit }: Props) {
         </Section>
       </div>
     </div>
+  );
+}
+
+function MobileSellerDetailView({ seller: s, onBack, onEdit }: Props) {
+  const { user } = useAuth();
+  const formatDate = (d?: string) =>
+    d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined;
+
+  return (
+    <div className="w-full pb-6 font-sans">
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex justify-between items-start mb-3">
+          <button onClick={onBack} className="p-2 -ml-2 rounded-full text-slate-500">
+            <ArrowLeft size={20} />
+          </button>
+          {user?.role === 'admin' && (
+            <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full">
+              Edit
+            </button>
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{s.sellerName}</h1>
+        <p className="text-xs text-slate-500 font-mono mt-0.5">{s.code}</p>
+      </div>
+
+      <div className="px-4 space-y-4">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Contact Details</h2>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Phone</span>
+              <span className="text-sm font-medium text-slate-900">{s.contactNumber || '-'}</span>
+            </div>
+            <div className="flex flex-col gap-1 pt-1 border-b border-slate-50 pb-2.5 last:border-0">
+              <span className="text-sm text-slate-500">Address</span>
+              <span className="text-sm font-medium text-slate-900 leading-snug">{s.address || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        {s.referredByAgentId && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Agent Referral</h2>
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Referred By</span>
+                <span className="text-sm font-medium text-slate-900">{s.referredByAgentId.name}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Email</span>
+                <span className="text-sm font-medium text-slate-900">{s.referredByAgentId.email}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Notes & Record</h2>
+          <div className="space-y-2.5">
+            {s.note && (
+              <div className="flex flex-col gap-1 pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Note</span>
+                <span className="text-sm font-medium text-slate-900 leading-snug">{s.note}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Created At</span>
+              <span className="text-sm font-medium text-slate-900">{formatDate(s.createdAt) || '-'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SellerDetailView(props: Props) {
+  return (
+    <>
+      <div className="hidden lg:block">
+        <DesktopSellerDetailView {...props} />
+      </div>
+      <div className="block lg:hidden">
+        <MobileSellerDetailView {...props} />
+      </div>
+    </>
   );
 }

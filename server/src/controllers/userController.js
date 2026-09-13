@@ -1,6 +1,93 @@
 'use strict';
 const User = require('../models/User');
+const Report = require('../models/Report');
+const Property = require('../models/Property');
+const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
+
+// ─── Helper Functions ──────────────────────────────────────────────────────
+
+/**
+ * Calculates propertiesSold and total revenue for given agent IDs
+ */
+const getAgentStatsMap = async (agentIds) => {
+  if (!agentIds || agentIds.length === 0) return {};
+
+  const agentObjectIds = agentIds.map((id) => (typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id));
+
+  const [reportStats, propertyStats] = await Promise.all([
+    Report.aggregate([
+      { $match: { agentId: { $in: agentObjectIds } } },
+      {
+        $group: {
+          _id: '$agentId',
+          propertiesSold: { $sum: 1 },
+          revenue: { $sum: '$closingPrice' },
+          propertyIds: { $push: '$propertyId' },
+        },
+      },
+    ]),
+    Property.aggregate([
+      {
+        $match: {
+          propertyStatus: 'Sold',
+          referredByAgentId: { $in: agentObjectIds },
+        },
+      },
+      {
+        $group: {
+          _id: '$referredByAgentId',
+          soldProperties: {
+            $push: {
+              _id: '$_id',
+              price: { $ifNull: ['$price', 0] },
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const statsMap = {};
+  agentIds.forEach((id) => {
+    statsMap[id.toString()] = { propertiesSold: 0, revenue: 0 };
+  });
+
+  const reportMap = {};
+  reportStats.forEach((r) => {
+    const rId = r._id.toString();
+    const propSet = new Set((r.propertyIds || []).map((p) => p.toString()));
+    reportMap[rId] = {
+      propertiesSold: r.propertiesSold,
+      revenue: r.revenue,
+      propertySet: propSet,
+    };
+    if (statsMap[rId]) {
+      statsMap[rId].propertiesSold = r.propertiesSold;
+      statsMap[rId].revenue = r.revenue;
+    }
+  });
+
+  propertyStats.forEach((p) => {
+    const pId = p._id.toString();
+    const existingReportInfo = reportMap[pId];
+    const propertySet = existingReportInfo ? existingReportInfo.propertySet : new Set();
+
+    if (!statsMap[pId]) {
+      statsMap[pId] = { propertiesSold: 0, revenue: 0 };
+    }
+
+    (p.soldProperties || []).forEach((prop) => {
+      const propIdStr = prop._id.toString();
+      if (!propertySet.has(propIdStr)) {
+        statsMap[pId].propertiesSold += 1;
+        statsMap[pId].revenue += prop.price;
+      }
+    });
+  });
+
+  return statsMap;
+};
 
 // ─── Controller Functions ──────────────────────────────────────────────────
 
@@ -13,10 +100,21 @@ const getAllAgents = async (req, res, next) => {
   try {
     const agents = await User.find({ role: 'agent' }).select('-password').sort({ createdAt: -1 });
 
+    const agentIds = agents.map((a) => a._id);
+    const statsMap = await getAgentStatsMap(agentIds);
+
+    const agentsWithStats = agents.map((agent) => {
+      const agentObj = agent.toObject();
+      const stats = statsMap[agent._id.toString()] || { propertiesSold: 0, revenue: 0 };
+      agentObj.propertiesSold = stats.propertiesSold;
+      agentObj.revenue = stats.revenue;
+      return agentObj;
+    });
+
     return res.status(200).json({
       success: true,
-      count: agents.length,
-      data: agents,
+      count: agentsWithStats.length,
+      data: agentsWithStats,
     });
   } catch (error) {
     next(error);
@@ -38,9 +136,15 @@ const getAgentById = async (req, res, next) => {
       });
     }
 
+    const statsMap = await getAgentStatsMap([agent._id]);
+    const agentObj = agent.toObject();
+    const stats = statsMap[agent._id.toString()] || { propertiesSold: 0, revenue: 0 };
+    agentObj.propertiesSold = stats.propertiesSold;
+    agentObj.revenue = stats.revenue;
+
     return res.status(200).json({
       success: true,
-      data: agent,
+      data: agentObj,
     });
   } catch (error) {
     next(error);

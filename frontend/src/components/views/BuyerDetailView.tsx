@@ -3,6 +3,7 @@ import {
   Maximize2, BedDouble, Car, Calendar, Tag, Target,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   buyer: any;
@@ -38,7 +39,8 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
-export function BuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
+function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
+  const { user } = useAuth();
   const statusBadge = clsx('badge',
     b.status === 'Active' ? 'badge-green' :
     b.status === 'Closed' ? 'badge-red' :
@@ -72,7 +74,13 @@ export function BuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
             </div>
           </div>
         </div>
-        <button onClick={onEdit} className="btn-outline btn-sm flex items-center gap-1.5 flex-shrink-0">
+        <button 
+          onClick={onEdit} 
+          className={clsx(
+            "btn-outline btn-sm items-center gap-1.5 flex-shrink-0",
+            user?.role !== 'admin' ? "hidden lg:flex" : "flex"
+          )}
+        >
           <Edit size={14} /> Edit
         </button>
       </div>
@@ -124,5 +132,157 @@ export function BuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         </Section>
       </div>
     </div>
+  );
+}
+
+function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
+  const { user } = useAuth();
+  const formatDate = (d?: string) =>
+    d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined;
+  
+  const formatPrice = (n?: number) =>
+    n !== undefined && n !== null ? `₹${n.toLocaleString('en-IN')}` : '-';
+
+  const statusBadge = clsx('px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide',
+    b.status === 'Active' ? 'bg-[#E7F7ED] text-[#137A3B]' :
+    b.status === 'Closed' ? 'bg-[#FEE2E2] text-[#B91C1C]' :
+    b.status === 'Follow-up' ? 'bg-[#FEF3C7] text-[#B45309]' : 'bg-slate-100 text-slate-600'
+  );
+
+  return (
+    <div className="w-full pb-6 font-sans">
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex justify-between items-start mb-3">
+          <button onClick={onBack} className="p-2 -ml-2 rounded-full text-slate-500">
+            <ArrowLeft size={20} />
+          </button>
+          {user?.role === 'admin' && (
+            <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full">
+              Edit
+            </button>
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{b.buyerName}</h1>
+        <p className="text-xs text-slate-500 font-mono mt-0.5">{b.code}</p>
+        
+        <div className="flex gap-2 mt-3 flex-wrap">
+          <span className={statusBadge}>
+            {b.status}
+          </span>
+          {b.purpose && (
+            <span className={clsx('px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide', b.purpose === 'Purchase' ? 'bg-[#E0E7FF] text-[#4338CA]' : 'bg-[#FEF3C7] text-[#B45309]')}>
+              {b.purpose}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 space-y-4">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Contact Details</h2>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Phone</span>
+              <span className="text-sm font-medium text-slate-900">{b.contactNumber || '-'}</span>
+            </div>
+            <div className="flex flex-col gap-1 pt-1 border-b border-slate-50 pb-2.5 last:border-0">
+              <span className="text-sm text-slate-500">Address</span>
+              <span className="text-sm font-medium text-slate-900 leading-snug">{b.address || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Requirements</h2>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Location</span>
+              <span className="text-sm font-medium text-slate-900">{b.preferredLocation || '-'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Type</span>
+              <span className="text-sm font-medium text-slate-900">{b.propertyTypeInterested || '-'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">BHK</span>
+              <span className="text-sm font-medium text-slate-900">{b.bhkRequirement ? `${b.bhkRequirement} BHK` : '-'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Area</span>
+              <span className="text-sm font-medium text-slate-900">{b.areaRequirement ? `${b.areaRequirement.toLocaleString()} sq ft` : '-'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Parking</span>
+              <span className="text-sm font-medium text-slate-900">{b.parkingRequirement || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Budget</h2>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Min Budget</span>
+              <span className="text-sm font-medium text-slate-900">{formatPrice(b.budgetMin)}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Max Budget</span>
+              <span className="text-sm font-medium text-slate-900">{formatPrice(b.budgetMax)}</span>
+            </div>
+          </div>
+        </div>
+
+        {b.referredByAgentId && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Agent Referral</h2>
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Referred By</span>
+                <span className="text-sm font-medium text-slate-900">{b.referredByAgentId.name}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Email</span>
+                <span className="text-sm font-medium text-slate-900">{b.referredByAgentId.email}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Notes & Record</h2>
+          <div className="space-y-2.5">
+            {b.note && (
+              <div className="flex flex-col gap-1 pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Note</span>
+                <span className="text-sm font-medium text-slate-900 leading-snug">{b.note}</span>
+              </div>
+            )}
+            {b.remarks && (
+              <div className="flex flex-col gap-1 pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Remarks</span>
+                <span className="text-sm font-medium text-slate-900 leading-snug">{b.remarks}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Created At</span>
+              <span className="text-sm font-medium text-slate-900">{formatDate(b.createdAt) || '-'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BuyerDetailView(props: Props) {
+  return (
+    <>
+      <div className="hidden lg:block">
+        <DesktopBuyerDetailView {...props} />
+      </div>
+      <div className="block lg:hidden">
+        <MobileBuyerDetailView {...props} />
+      </div>
+    </>
   );
 }

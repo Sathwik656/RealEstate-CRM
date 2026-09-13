@@ -1,6 +1,7 @@
 'use strict';
 const PushSubscription = require('../models/PushSubscription');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // ─── GET /api/notifications/settings ─────────────────────────────────────────
 
@@ -166,9 +167,99 @@ const unsubscribe = async (req, res, next) => {
   }
 };
 
+// ─── GET /api/notifications ──────────────────────────────────────────────────
+
+/**
+ * Get all notifications for the authenticated user
+ */
+const getNotifications = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filter = { recipient: req.user._id };
+    const total = await Notification.countDocuments(filter);
+    const unreadCount = await Notification.countDocuments({ ...filter, isRead: false });
+
+    const notifications = await Notification.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notifications fetched successfully',
+      data: {
+        notifications,
+        unreadCount,
+      },
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── PATCH /api/notifications/:id/read ───────────────────────────────────────
+
+/**
+ * Mark a single notification as read
+ */
+const markAsRead = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const notification = await Notification.findOneAndUpdate(
+      { _id: id, recipient: req.user._id },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notification marked as read',
+      data: notification,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── PATCH /api/notifications/read-all ───────────────────────────────────────
+
+/**
+ * Mark all unread notifications as read for the user
+ */
+const markAllAsRead = async (req, res, next) => {
+  try {
+    await Notification.updateMany(
+      { recipient: req.user._id, isRead: false },
+      { isRead: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getSettings,
   updateSettings,
   subscribe,
   unsubscribe,
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
 };

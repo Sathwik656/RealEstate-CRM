@@ -16,18 +16,23 @@ export function AppLayout() {
       </div>
 
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-        <Header />
+        {/* Desktop Header */}
+        <div className="hidden lg:block">
+          <Header />
+        </div>
         
-        {/* Main Content Area - Added pb-20 on mobile to clear BottomNav */}
+        {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+          <div className="max-w-md mx-auto lg:max-w-7xl lg:mx-auto px-0 sm:px-6 lg:py-8 w-full min-h-screen lg:min-h-0 bg-slate-50 lg:bg-transparent">
             <Outlet />
           </div>
         </main>
       </div>
 
       {/* Mobile Navigation (hidden on desktop) */}
-      <BottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+      <div className="lg:hidden fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-50">
+        <BottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+      </div>
       <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
     </div>
   );

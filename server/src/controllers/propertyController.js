@@ -44,30 +44,8 @@ const buildPropertyFilter = async (req) => {
 
   let filter = {};
 
-  if (req.user.role === 'agent') {
-    const agentDeals = await Deal.find({ agentId: req.user._id, status: { $in: ['ongoing', 'pending_approval'] } }).select('propertyId');
-    const inDealPropertyIds = agentDeals.map(d => d.propertyId);
-    filter.$or = [
-      { propertyStatus: { $in: ['Available', 'In Allotment'] } },
-      { _id: { $in: inDealPropertyIds }, propertyStatus: 'In Deal' },
-    ];
-  }
-
   if (status) {
-    if (req.user.role === 'agent') {
-      delete filter.$or;
-      if (status === 'Available') {
-        filter.propertyStatus = { $in: ['Available', 'In Allotment'] };
-      } else if (status === 'In Deal') {
-        const agentDeals = await Deal.find({ agentId: req.user._id, status: { $in: ['ongoing', 'pending_approval'] } }).select('propertyId');
-        filter._id = { $in: agentDeals.map(d => d.propertyId) };
-        filter.propertyStatus = 'In Deal';
-      } else {
-        filter.propertyStatus = status;
-      }
-    } else {
-      filter.propertyStatus = status;
-    }
+    filter.propertyStatus = status;
   }
 
   if (type) filter.propertyType = type;
@@ -94,6 +72,13 @@ const buildPropertyFilter = async (req) => {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
+  }
+
+  const { minArea, maxArea } = req.query;
+  if (minArea || maxArea) {
+    filter.area = {};
+    if (minArea) filter.area.$gte = Number(minArea);
+    if (maxArea) filter.area.$lte = Number(maxArea);
   }
 
   return filter;

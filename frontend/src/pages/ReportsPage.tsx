@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { FileText, Eye, Building2, User, Handshake, Calendar } from 'lucide-react';
+import { FileText, Eye, Building2, User, Handshake, Calendar, Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import clsx from 'clsx';
 
@@ -9,6 +9,18 @@ function fmt(n: number | undefined) {
   if (!n) return '—';
   return '₹' + n.toLocaleString('en-IN');
 }
+
+function fmtPriceAbbr(price?: number) {
+  if (!price) return '₹0.0L';
+  if (price >= 10000000) {
+    return `₹${(price / 10000000).toFixed(2)}Cr`;
+  }
+  if (price >= 100000) {
+    return `₹${(price / 100000).toFixed(1)}L`;
+  }
+  return `₹${price.toLocaleString('en-IN')}`;
+}
+
 function fmtDate(d: string | undefined) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -31,6 +43,231 @@ function Section({ title, icon: Icon, children, accent = false }: { title: strin
         <h4 className={clsx('text-xs font-bold uppercase tracking-wider', accent ? 'text-accent' : 'text-muted')}>{title}</h4>
       </div>
       <dl className="px-4">{children}</dl>
+    </div>
+  );
+}
+
+function MobileReportDetailView({ report, onBack }: { report: any; onBack: () => void }) {
+  const p = report.propertyId;
+  const seller = p?.sellerId;
+  const referredAgent = p?.referredByAgentId;
+  const dealAgent = report.agentId;
+  const deal = report.dealId;
+  const location = typeof p?.location === 'object' ? `${p.location?.location}${p.location?.code ? ` (${p.location.code})` : ''}` : p?.location;
+
+  const priceDiff = report.closingPrice && report.originalPrice ? report.closingPrice - report.originalPrice : null;
+
+  return (
+    <div className="w-full pb-20 font-sans animate-fade-in">
+      {/* Header Bar */}
+      <div className="flex items-center gap-3 px-4 pt-6 pb-4 bg-white border-b border-slate-100 sticky top-0 z-10 shadow-2xs">
+        <button 
+          onClick={onBack}
+          className="p-2 -ml-2 text-slate-600 hover:text-slate-900 active:scale-95 transition-all rounded-full hover:bg-slate-100"
+          aria-label="Back to reports list"
+        >
+          <ChevronLeft size={22} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold text-slate-900 truncate">
+            {p?.propertyTitle || 'Sale Report'}
+          </h1>
+          <p className="text-xs text-slate-500 font-mono truncate">
+            {report.reportId || (deal?.dealId ? `Deal: ${deal.dealId}` : 'Report Detail')}
+          </p>
+        </div>
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex-shrink-0">
+          Completed
+        </span>
+      </div>
+
+      <div className="px-4 py-4 space-y-4">
+        {/* Sale Financial Summary Card */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100 space-y-3">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sale Financial Summary</h2>
+          
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Original Price</span>
+              <span className="text-sm font-bold text-slate-800 mt-0.5 block">{fmt(report.originalPrice)}</span>
+            </div>
+            
+            <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100">
+              <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider block">Closing Price</span>
+              <span className="text-base font-bold text-emerald-700 mt-0.5 block">{fmt(report.closingPrice)}</span>
+            </div>
+          </div>
+
+          {priceDiff !== null && (
+            <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
+              <span className="text-slate-500 font-medium">Price Difference</span>
+              <span className={clsx('font-bold', priceDiff >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                {priceDiff >= 0 ? '+' : ''}{fmt(Math.abs(priceDiff))}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Property Details */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 size={16} className="text-[#B5923E]" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Property Details</h2>
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Title</span>
+              <span className="text-xs font-semibold text-slate-900 text-right truncate max-w-[200px]">{p?.propertyTitle || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Property Code</span>
+              <span className="text-xs font-mono font-semibold text-[#B5923E]">{p?.code || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Type & Purpose</span>
+              <span className="text-xs font-medium text-slate-900">{p?.propertyType && p?.purpose ? `${p.propertyType} · ${p.purpose}` : p?.propertyType || '—'}</span>
+            </div>
+            <div className="flex justify-between items-start pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500 flex-shrink-0">Location</span>
+              <span className="text-xs font-medium text-slate-900 text-right leading-snug">{location || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-slate-500">Area</span>
+              <span className="text-xs font-medium text-slate-900">{p?.area ? `${p.area.toLocaleString()} sq ft` : '—'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Deal Details */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <Handshake size={16} className="text-[#B5923E]" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Deal Details</h2>
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Deal ID</span>
+              <span className="text-xs font-mono font-semibold text-slate-900">{deal?.dealId || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Deal Status</span>
+              <span className="text-xs font-semibold text-emerald-600">Completed & Approved</span>
+            </div>
+            {deal?.createdAt && (
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Deal Opened</span>
+                <span className="text-xs font-medium text-slate-900">{fmtDate(deal.createdAt)}</span>
+              </div>
+            )}
+            {deal?.markedDoneAt && (
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Marked Done by Agent</span>
+                <span className="text-xs font-medium text-slate-900">{fmtDate(deal.markedDoneAt)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-slate-500">Approved Date</span>
+              <span className="text-xs font-medium text-slate-900">{fmtDate(report.completedAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Agent Details */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <User size={16} className="text-[#B5923E]" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Agent Details</h2>
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Deal Closed By</span>
+              <span className="text-xs font-bold text-slate-900">{dealAgent?.name || '—'}</span>
+            </div>
+            {dealAgent?.code && (
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Agent Code</span>
+                <span className="text-xs font-mono font-semibold text-[#B5923E]">{dealAgent.code}</span>
+              </div>
+            )}
+            {dealAgent?.email && (
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Email</span>
+                <span className="text-xs font-medium text-slate-900 truncate max-w-[180px]">{dealAgent.email}</span>
+              </div>
+            )}
+
+            {referredAgent && (
+              <>
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Referred By (Listing Agent)</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                  <span className="text-xs text-slate-500">Name</span>
+                  <span className="text-xs font-semibold text-slate-900">{referredAgent.name}</span>
+                </div>
+                {referredAgent.code && (
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                    <span className="text-xs text-slate-500">Code</span>
+                    <span className="text-xs font-mono font-semibold text-slate-700">{referredAgent.code}</span>
+                  </div>
+                )}
+                {referredAgent.email && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Email</span>
+                    <span className="text-xs font-medium text-slate-900 truncate max-w-[180px]">{referredAgent.email}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Seller Details */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <User size={16} className="text-[#B5923E]" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Seller Details</h2>
+          </div>
+          {seller ? (
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Seller Name</span>
+                <span className="text-xs font-bold text-slate-900">{seller.sellerName}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+                <span className="text-xs text-slate-500">Contact Number</span>
+                <span className="text-xs font-medium text-slate-900">{seller.contactNumber || '—'}</span>
+              </div>
+              {seller.address && (
+                <div className="flex justify-between items-start">
+                  <span className="text-xs text-slate-500 flex-shrink-0">Address</span>
+                  <span className="text-xs font-medium text-slate-900 text-right leading-snug">{seller.address}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic">No seller information linked</p>
+          )}
+        </div>
+
+        {/* Report Information */}
+        <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText size={16} className="text-[#B5923E]" />
+            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Report Information</h2>
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs text-slate-500">Report ID</span>
+              <span className="text-xs font-mono font-semibold text-slate-900">{report.reportId || '—'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-slate-500">Completion Date</span>
+              <span className="text-xs font-medium text-slate-900">{fmtDate(report.completedAt)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -186,7 +423,8 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="page-wrapper">
+    <>
+    <div className="hidden lg:block page-wrapper">
       {viewingReport && (
         <ReportDetailModal report={viewingReport} onClose={() => setViewingReport(null)} />
       )}
@@ -297,5 +535,91 @@ export default function ReportsPage() {
         </div>
       </div>
     </div>
+    
+    {/* Mobile UI */}
+    <div className="block lg:hidden w-full pb-20 font-sans">
+      {viewingReport ? (
+        <MobileReportDetailView report={viewingReport} onBack={() => setViewingReport(null)} />
+      ) : (
+        <>
+          <div className="px-4 pt-6 pb-4">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Reports</h1>
+              <select 
+                className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-medium shadow-2xs focus:outline-none focus:border-[#B5923E]"
+                onChange={handleMonthChange}
+                value={selectedMonth && selectedYear ? `${selectedMonth}-${selectedYear}` : ''}
+              >
+                <option value="">All Months</option>
+                {monthOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="px-4 space-y-3">
+            {isLoading ? (
+              <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                <span>Loading reports...</span>
+              </div>
+            ) : !data?.data?.length ? (
+              <div className="py-14 px-4 bg-white rounded-2xl border border-slate-100 text-center flex flex-col items-center">
+                <FileText size={32} className="text-slate-300 mb-2" />
+                <p className="text-sm font-bold text-slate-800">No reports found</p>
+                <p className="text-xs text-slate-500 mt-1">Completed deal reports will appear here.</p>
+              </div>
+            ) : (
+              data.data.map((report: any) => {
+                const p = report.propertyId;
+                const dealAgentName = report.agentId?.name || report.dealId?.agentId?.name || 'Agent';
+                const displayPrice = report.closingPrice || p?.price || 0;
+
+                return (
+                  <div 
+                    key={report._id} 
+                    onClick={() => setViewingReport(report)}
+                    className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex items-center justify-between gap-3 relative cursor-pointer active:scale-[0.99] transition-transform hover:border-slate-200"
+                  >
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                      <FileText size={20} />
+                    </div>
+
+                    {/* Report Text Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-slate-900 truncate">
+                        {p?.propertyTitle || 'Property Sale'}
+                      </h3>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} className="text-slate-400 flex-shrink-0" />
+                          {new Date(report.completedAt || report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center gap-1 truncate">
+                          <User size={12} className="text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{dealAgentName}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Price & Action */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-bold text-emerald-600">
+                        {fmtPriceAbbr(displayPrice)}
+                      </span>
+                      <ChevronRight size={18} className="text-slate-300" />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+    </div>
+    </>
   );
 }

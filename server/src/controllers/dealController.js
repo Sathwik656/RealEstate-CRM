@@ -5,6 +5,7 @@ const Report = require('../models/Report');
 const Property = require('../models/Property');
 const { generateId } = require('../utils/generateId');
 const { generateDealCode } = require('../utils/generateCode');
+const { notifyDealCompleted, notifyDealApproved } = require('../services/pushNotificationService');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -164,6 +165,9 @@ const markDealDone = async (req, res, next) => {
       .populate({ path: 'propertyId', populate: { path: 'location' } })
       .populate('agentId', 'name email code');
 
+    // Trigger notification
+    notifyDealCompleted(populated, populated.propertyId, populated.agentId);
+
     return res.status(200).json({
       success: true,
       message: 'Deal marked as pending approval. Waiting for admin review.',
@@ -224,6 +228,9 @@ const approveDeal = async (req, res, next) => {
     const populatedDeal = await Deal.findById(deal._id)
       .populate({ path: 'propertyId', populate: { path: 'location' } })
       .populate('agentId', 'name email code');
+
+    // Trigger notification
+    notifyDealApproved(populatedDeal, populatedDeal.propertyId, populatedDeal.agentId);
 
     return res.status(200).json({
       success: true,

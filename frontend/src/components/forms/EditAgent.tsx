@@ -40,40 +40,50 @@ export function EditAgent({ initialData, onSuccess, onCancel }: Props) {
   };
 
   return (
-    <div className="page-wrapper max-w-xl">
-      <div className="flex items-center gap-3">
-        <button onClick={onCancel} className="btn-icon hover:text-primary hover:bg-surface-alt">
+    <div className="page-wrapper max-w-3xl pb-24 mx-auto pt-6 px-4 sm:px-6">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={onCancel} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors">
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="page-title">Edit Agent</h1>
-          <p className="page-subtitle">Update agent profile details</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Edit Agent</h1>
+          <p className="text-sm text-slate-500">Update agent profile details</p>
         </div>
       </div>
-      {serverError && <div className="alert-error">{serverError}</div>}
-      <div className="card">
-        <div className="card-body">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input {...register('name')} className="form-input" placeholder="e.g. John Doe" />
-              {errors.name && <p className="form-error">{errors.name.message}</p>}
+      
+      {serverError && <div className="alert-error mb-6">{serverError}</div>}
+      
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        
+        {/* Card 1: Agent Details */}
+        <div className="form-card">
+          <div className="p-5 sm:p-6">
+            <h2 className="form-card-header">Agent Profile</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="form-group md:col-span-2">
+                <label className="form-label">Full Name</label>
+                <input {...register('name')} className="form-input" placeholder="e.g. John Doe" />
+                {errors.name && <p className="form-error">{errors.name.message}</p>}
+              </div>
+              <div className="form-group md:col-span-2">
+                <label className="form-label">Email Address</label>
+                <input {...register('email')} type="email" className="form-input" placeholder="e.g. agent@veenu.com" />
+                {errors.email && <p className="form-error">{errors.email.message}</p>}
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <input {...register('email')} type="email" className="form-input" placeholder="e.g. agent@veenu.com" />
-              {errors.email && <p className="form-error">{errors.email.message}</p>}
-            </div>
+          </div>
+        </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="btn-primary">
-                {isSubmitting ? 'Saving...' : 'Update Agent'}
-              </button>
-            </div>
-          </form>
+        {/* Action Bar (Sticky Footer) */}
+        <div className="sticky-action-bar">
+          <button type="button" onClick={onCancel} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            Cancel
+          </button>
+          <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0">
+            {isSubmitting ? 'Saving...' : 'Update Agent'}
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

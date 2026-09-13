@@ -3,6 +3,7 @@ const Property = require('../models/Property');
 const PropertyInterest = require('../models/PropertyInterest');
 const Deal = require('../models/Deal');
 const { generateDealCode } = require('../utils/generateCode');
+const { notifyAgentInterested, notifyPropertyAssigned } = require('../services/pushNotificationService');
 
 /**
  * POST /api/allotments/:propertyId/interest
@@ -40,6 +41,9 @@ const expressInterest = async (req, res, next) => {
       property.propertyStatus = 'In Allotment';
       await property.save();
     }
+
+    // Trigger notification
+    notifyAgentInterested(property, req.user);
 
     return res.status(200).json({
       success: true,
@@ -141,6 +145,9 @@ const allotProperty = async (req, res, next) => {
       agentId,
       status: 'ongoing',
     });
+
+    // Trigger notification
+    notifyPropertyAssigned(updatedProperty, agentId);
 
     return res.status(201).json({
       success: true,

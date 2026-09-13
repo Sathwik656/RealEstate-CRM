@@ -22,6 +22,7 @@ const getDashboardStats = async (req, res, next) => {
       activeBuyers,
       ongoingDeals,
       pendingApprovals,
+      allotmentRequests,
     ] = await Promise.all([
       Property.countDocuments(propertyFilter),
       Property.countDocuments({ ...propertyFilter, propertyStatus: 'Available' }),
@@ -32,6 +33,7 @@ const getDashboardStats = async (req, res, next) => {
       // Deal counts — admin sees all, agent sees their own
       Deal.countDocuments(isAdmin ? { status: 'ongoing' } : { agentId: req.user._id, status: 'ongoing' }),
       Deal.countDocuments(isAdmin ? { status: 'pending_approval' } : { agentId: req.user._id, status: 'pending_approval' }),
+      Property.countDocuments({ propertyStatus: 'In Allotment' }),
     ]);
 
     return res.status(200).json({
@@ -46,6 +48,7 @@ const getDashboardStats = async (req, res, next) => {
         activeBuyers,
         ongoingDeals,
         pendingApprovals,
+        allotmentRequests,
       },
     });
   } catch (err) {

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import {
-  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle, Bell, Loader2
+  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle, Bell, Loader2, User, LogOut, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
@@ -142,8 +142,9 @@ function AddRow({
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const qc = useQueryClient();
+  const [activeSection, setActiveSection] = useState<'menu' | 'notifications' | 'locations' | 'profile'>('menu');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,6 +158,12 @@ export default function SettingsPage() {
     setSearch(val);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 350);
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to log out?')) {
+      logout();
+    }
   };
 
   const showSuccess = (msg: string) => {
@@ -317,11 +324,32 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="page-wrapper">
-      <div className="page-header">
+    <>
+    <div className="hidden lg:block page-wrapper">
+      <div className="page-header mb-6">
         <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage system configuration</p>
+          <div className="flex items-center gap-2">
+            {activeSection !== 'menu' && (
+              <button 
+                onClick={() => setActiveSection('menu')}
+                className="btn-icon hover:bg-surface-alt bg-surface border border-border shadow-sm p-1.5 rounded-lg mr-2"
+                title="Back to Settings"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            <h1 className="page-title">
+              {activeSection === 'menu' ? 'Settings' : 
+               activeSection === 'notifications' ? 'Notifications' : 
+               activeSection === 'locations' ? 'Location Codes' : 'Profile'}
+            </h1>
+          </div>
+          <p className="page-subtitle mt-1">
+            {activeSection === 'menu' ? 'Manage your account and system preferences' : 
+             activeSection === 'notifications' ? 'Manage notification preferences' :
+             activeSection === 'locations' ? 'Manage locations and location codes' :
+             'View your account information'}
+          </p>
         </div>
       </div>
 
@@ -332,8 +360,64 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Main Settings Menu (List View) */}
+      {activeSection === 'menu' && (
+        <div className="flex flex-col gap-3 max-w-3xl">
+          <button 
+            onClick={() => setActiveSection('notifications')} 
+            className="card text-left p-4 hover:border-accent/50 hover:shadow-sm transition-all group flex items-center justify-between bg-surface border border-border/60 rounded-xl"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <Bell size={20} className="text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-primary group-hover:text-accent transition-colors">Notifications</h3>
+                <p className="text-xs text-muted">Manage notification preferences</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all ml-4 flex-shrink-0" />
+          </button>
+          
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => setActiveSection('locations')} 
+              className="card text-left p-4 hover:border-accent/50 hover:shadow-sm transition-all group flex items-center justify-between bg-surface border border-border/60 rounded-xl"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <MapPin size={20} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-primary group-hover:text-accent transition-colors">Location Codes</h3>
+                  <p className="text-xs text-muted">Manage locations and location codes</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all ml-4 flex-shrink-0" />
+            </button>
+          )}
+
+          <button 
+            onClick={() => setActiveSection('profile')} 
+            className="card text-left p-4 hover:border-accent/50 hover:shadow-sm transition-all group flex items-center justify-between bg-surface border border-border/60 rounded-xl"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <User size={20} className="text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-primary group-hover:text-accent transition-colors">Profile</h3>
+                <p className="text-xs text-muted">View your account information</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all ml-4 flex-shrink-0" />
+          </button>
+        </div>
+      )}
+
       {/* Push Notifications Card */}
-      <div className="card mb-6">
+      {activeSection === 'notifications' && (
+      <div className="card">
         <div className="card-header border-b border-border">
           <div className="flex items-center gap-2">
             <Bell size={16} className="text-accent" />
@@ -384,139 +468,371 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Location Codes Card (Admin Only) */}
-      {user?.role === 'admin' && (
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center gap-2">
-            <MapPin size={16} className="text-accent" />
-            <div>
-              <h2 className="font-display font-semibold text-primary">Location Codes</h2>
-              <p className="text-xs text-muted mt-0.5">
-                {pagination?.total ?? 0} locations · Edit codes or add new ones
-              </p>
+      {activeSection === 'locations' && user?.role === 'admin' && (
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center gap-2">
+              <MapPin size={16} className="text-accent" />
+              <div>
+                <h2 className="font-display font-semibold text-primary">Location Codes</h2>
+                <p className="text-xs text-muted mt-0.5">
+                  {pagination?.total ?? 0} locations · Edit codes or add new ones
+                </p>
+              </div>
+            </div>
+            <button
+              className="btn-accent btn-sm flex items-center gap-1.5"
+              onClick={startAdd}
+            >
+              <Plus size={14} /> Add Location
+            </button>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-4 sm:px-6 py-3 border-b border-border bg-surface-alt">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={15} />
+              <input
+                type="text"
+                placeholder="Search location or code..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="form-input pl-9 text-sm py-2 w-full"
+              />
+              {search && (
+                <button
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
           </div>
-          <button
-            className="btn-accent btn-sm flex items-center gap-1.5"
-            onClick={startAdd}
+
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Location Name</th>
+                  <th>Code</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Add new row at top */}
+                {addingNew && (
+                  <AddRow
+                    onSave={(location, code) => createMutation.mutate({ location, code })}
+                    onCancel={() => { setAddingNew(false); setRowError(null); }}
+                    saving={createMutation.isPending}
+                    error={addingNew ? rowError : null}
+                  />
+                )}
+
+                {isLoading ? (
+                  <tr><td colSpan={3} className="py-12 text-center text-muted">Loading locations...</td></tr>
+                ) : !locations.length ? (
+                  <tr><td colSpan={3} className="py-12 text-center text-muted">No locations found.</td></tr>
+                ) : locations.map((entry) =>
+                  editingId === entry._id ? (
+                    <EditRow
+                      key={entry._id}
+                      entry={entry}
+                      onSave={(id, location, code) => updateMutation.mutate({ id, location, code })}
+                      onCancel={() => { setEditingId(null); setRowError(null); }}
+                      saving={updateMutation.isPending}
+                      error={editingId === entry._id ? rowError : null}
+                    />
+                  ) : (
+                    <tr key={entry._id} className="hover:bg-surface-alt/60">
+                      <td className="font-medium">{entry.location}</td>
+                      <td>
+                        <span className="font-mono text-xs bg-accent/10 text-accent px-2 py-0.5 rounded font-semibold tracking-wider">
+                          {entry.code}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            className="btn-icon hover:text-blue-600 hover:bg-blue-50"
+                            title="Edit"
+                            onClick={() => startEdit(entry._id)}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            className="btn-icon hover:text-red-600 hover:bg-red-50"
+                            title="Delete"
+                            onClick={() => handleDelete(entry)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {pagination && pagination.pages > 1 && (
+            <div className="pagination">
+              <span className="text-sm text-muted">
+                Page {pagination.page} of {pagination.pages} · {pagination.total} total
+              </span>
+              <div className="flex gap-2">
+                <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                  Previous
+                </button>
+                <button
+                  className="pagination-btn"
+                  disabled={page === pagination.pages}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Profile Section */}
+      {activeSection === 'profile' && (
+        <div className="card max-w-2xl">
+          <div className="card-header border-b border-border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-accent" />
+              <div>
+                <h2 className="font-display font-semibold text-primary">User Profile</h2>
+                <p className="text-xs text-muted mt-0.5">Your personal account information</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/60 text-red-600 hover:bg-red-100 hover:text-red-700 text-xs font-semibold transition-colors shadow-sm"
+              title="Logout of your account"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+          <div className="card-body p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-surface-alt border border-border/50">
+                <p className="text-xs font-medium text-muted uppercase tracking-wider mb-1">Full Name</p>
+                <p className="text-base font-semibold text-primary">{user?.name || 'N/A'}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-surface-alt border border-border/50">
+                <p className="text-xs font-medium text-muted uppercase tracking-wider mb-1">Email Address</p>
+                <p className="text-base font-semibold text-primary">{user?.email || 'N/A'}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-surface-alt border border-border/50">
+                <p className="text-xs font-medium text-muted uppercase tracking-wider mb-1">Role</p>
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/10 text-accent capitalize">
+                  {user?.role || 'user'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Mobile UI */}
+    <div className="block lg:hidden w-full pb-6 font-sans">
+      <div className="px-4 pt-6 pb-4">
+        {activeSection !== 'menu' && (
+          <button onClick={() => setActiveSection('menu')} className="p-2 -ml-2 rounded-full text-slate-500 mb-3">
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          {activeSection === 'menu' ? 'Settings' : 
+           activeSection === 'notifications' ? 'Notifications' : 
+           activeSection === 'locations' ? 'Location Codes' : 'Profile'}
+        </h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          {activeSection === 'menu' ? 'Manage your account and preferences' : 
+           activeSection === 'notifications' ? 'Manage notification preferences' :
+           activeSection === 'locations' ? 'Manage locations and location codes' :
+           'View your account information'}
+        </p>
+      </div>
+
+      {successMsg && (
+        <div className="mx-4 mb-4 flex items-center gap-2 px-4 py-3 bg-emerald-50 rounded-2xl text-emerald-700 text-sm">
+          <Check size={16} /> {successMsg}
+        </div>
+      )}
+
+      {activeSection === 'menu' && (
+        <div className="px-4 space-y-3">
+          <button 
+            onClick={() => setActiveSection('notifications')} 
+            className="w-full text-left p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between active:scale-[0.99] transition-transform"
           >
-            <Plus size={14} /> Add Location
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <Bell size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                <p className="text-[11px] text-slate-500">Manage notification preferences</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-slate-300" />
+          </button>
+          
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => setActiveSection('locations')} 
+              className="w-full text-left p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <MapPin size={18} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Location Codes</h3>
+                  <p className="text-[11px] text-slate-500">Manage locations and codes</p>
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-slate-300" />
+            </button>
+          )}
+
+          <button 
+            onClick={() => setActiveSection('profile')} 
+            className="w-full text-left p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+                <User size={18} className="text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Profile</h3>
+                <p className="text-[11px] text-slate-500">View your account information</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-slate-300" />
           </button>
         </div>
+      )}
 
-        {/* Search bar */}
-        <div className="px-4 sm:px-6 py-3 border-b border-border bg-surface-alt">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={15} />
-            <input
-              type="text"
-              placeholder="Search location or code..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="form-input pl-9 text-sm py-2 w-full"
-            />
-            {search && (
-              <button
-                onClick={() => handleSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-              >
-                <X size={13} />
-              </button>
+      {activeSection === 'notifications' && (
+        <div className="px-4">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            {isLoadingNotif ? (
+              <div className="text-sm text-slate-500">Loading settings...</div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Push Notifications</h3>
+                  <p className="text-[11px] text-slate-500 mt-1 max-w-[200px]">
+                    Receive alerts to this device.
+                  </p>
+                </div>
+                <button
+                  className={clsx(
+                    "relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
+                    notifData?.notificationsEnabled ? "bg-slate-900" : "bg-slate-200",
+                    isSubscribing && "opacity-50"
+                  )}
+                  onClick={handleTogglePush}
+                  disabled={isSubscribing}
+                >
+                  <span
+                    className={clsx(
+                      "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                      notifData?.notificationsEnabled ? "translate-x-5" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
             )}
           </div>
         </div>
+      )}
 
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Location Name</th>
-                <th>Code</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Add new row at top */}
-              {addingNew && (
-                <AddRow
-                  onSave={(location, code) => createMutation.mutate({ location, code })}
-                  onCancel={() => { setAddingNew(false); setRowError(null); }}
-                  saving={createMutation.isPending}
-                  error={addingNew ? rowError : null}
-                />
-              )}
-
-              {isLoading ? (
-                <tr><td colSpan={3} className="py-12 text-center text-muted">Loading locations...</td></tr>
-              ) : !locations.length ? (
-                <tr><td colSpan={3} className="py-12 text-center text-muted">No locations found.</td></tr>
-              ) : locations.map((entry) =>
-                editingId === entry._id ? (
-                  <EditRow
-                    key={entry._id}
-                    entry={entry}
-                    onSave={(id, location, code) => updateMutation.mutate({ id, location, code })}
-                    onCancel={() => { setEditingId(null); setRowError(null); }}
-                    saving={updateMutation.isPending}
-                    error={editingId === entry._id ? rowError : null}
-                  />
-                ) : (
-                  <tr key={entry._id} className="hover:bg-surface-alt/60">
-                    <td className="font-medium">{entry.location}</td>
-                    <td>
-                      <span className="font-mono text-xs bg-accent/10 text-accent px-2 py-0.5 rounded font-semibold tracking-wider">
-                        {entry.code}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          className="btn-icon hover:text-blue-600 hover:bg-blue-50"
-                          title="Edit"
-                          onClick={() => startEdit(entry._id)}
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          className="btn-icon hover:text-red-600 hover:bg-red-50"
-                          title="Delete"
-                          onClick={() => handleDelete(entry)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pagination && pagination.pages > 1 && (
-          <div className="pagination">
-            <span className="text-sm text-muted">
-              Page {pagination.page} of {pagination.pages} · {pagination.total} total
-            </span>
-            <div className="flex gap-2">
-              <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-                Previous
-              </button>
-              <button
-                className="pagination-btn"
-                disabled={page === pagination.pages}
-                onClick={() => setPage(p => p + 1)}
-              >
-                Next
-              </button>
+      {activeSection === 'profile' && (
+        <div className="px-4 space-y-4">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Full Name</p>
+              <p className="text-sm font-semibold text-slate-900">{user?.name || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email Address</p>
+              <p className="text-sm font-semibold text-slate-900">{user?.email || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Role</p>
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 capitalize">
+                {user?.role || 'user'}
+              </span>
             </div>
           </div>
-        )}
-      </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#FEE2E2] text-[#B91C1C] text-sm font-bold active:scale-[0.99] transition-transform"
+          >
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
+      )}
+
+      {activeSection === 'locations' && user?.role === 'admin' && (
+        <div className="px-4 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <button 
+              onClick={() => setActiveSection('menu')} 
+              className="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-full"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <h2 className="text-lg font-bold text-slate-900 flex-1 text-center pr-8">Location Codes</h2>
+            {/* The PR-8 is to offset the absolute position of the back button for centering */}
+            <button 
+              onClick={() => {
+                // Future mobile add implementation
+                alert('Add location via Mobile is under development. Use Desktop.');
+              }}
+              className="absolute right-4 text-accent font-semibold text-sm"
+            >
+              + Add
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            {isLoading ? (
+              <div className="p-6 text-center text-sm text-slate-500">Loading...</div>
+            ) : !locations?.length ? (
+              <div className="p-6 text-center text-sm text-slate-500">No locations found.</div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {locations.map((loc) => (
+                  <div key={loc._id} className="p-4 flex items-center justify-between">
+                    <span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-700 font-mono tracking-wider">
+                      {loc.code}
+                    </span>
+                    <span className="text-sm font-medium text-slate-900 truncate pl-4 text-right">
+                      {loc.location}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
+    </>
   );
 }
