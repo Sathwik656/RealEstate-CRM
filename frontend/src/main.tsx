@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 import { SpeedInsights } from "@vercel/speed-insights/react"
+import { Analytics } from "@vercel/analytics/react"
 
 // Register the service worker for PWA
 registerSW({
@@ -18,5 +19,7 @@ registerSW({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
+    <SpeedInsights/>
+    <Analytics/>
   </React.StrictMode>
 );
