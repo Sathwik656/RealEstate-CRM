@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">veenu-crm-client</string>
-    <string name="title_activity_main">veenu-crm-client</string>
-    <string name="package_name">com.veenu.crm</string>
-    <string name="custom_url_scheme">com.veenu.crm</string>
+    <string name="app_name">The Verandah</string>
+    <string name="title_activity_main">The Verandah</string>
+    <string name="package_name">com.theverandah.crm</string>
+    <string name="custom_url_scheme">com.theverandah.crm</string>
 </resources>

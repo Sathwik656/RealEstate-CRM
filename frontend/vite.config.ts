@@ -16,8 +16,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'Veenu Real Estate CRM',
-        short_name: 'Veenu CRM',
+        name: 'The Verandah',
+        short_name: 'The Verandah',
         theme_color: '#1a1f2e',
         background_color: '#0d1117',
         display: 'standalone',
