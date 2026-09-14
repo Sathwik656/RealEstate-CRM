@@ -161,7 +161,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .sticky-action-bar {
-    @apply fixed bottom-0 left-0 right-0 md:left-64 p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 flex justify-end gap-3 z-40 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)];
+    @apply static md:fixed md:bottom-0 md:left-64 md:right-0 p-4 mt-6 bg-white md:bg-white/80 md:backdrop-blur-md rounded-xl md:rounded-none border border-slate-200 md:border-t md:border-x-0 md:border-b-0 flex flex-row justify-end gap-3 z-40 shadow-sm md:shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)];
   }
 
   /* ── Form Inputs ── */

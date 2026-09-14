@@ -128,12 +128,12 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
           </div>
         </div>
 
-        {/* Action Bar (Sticky Footer) */}
+        {/* Action Bar (Below Form on Mobile, Sticky Footer on Desktop) */}
         <div className="sticky-action-bar">
-          <button type="button" onClick={onCancel} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+          <button type="button" onClick={onCancel} className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 sm:border-0 text-center">
             Cancel
           </button>
-          <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0">
+          <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 text-center">
             {isSubmitting ? 'Saving...' : (isEdit ? 'Update Seller' : 'Save Seller')}
           </button>
         </div>
