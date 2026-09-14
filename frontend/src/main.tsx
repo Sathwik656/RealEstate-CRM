@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 // Register the service worker for PWA
 registerSW({
