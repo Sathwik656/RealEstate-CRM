@@ -98,15 +98,13 @@ const createBuyer = async (req, res, next) => {
   try {
     const buyerData = req.body;
     const buyerId = generateId('BUY');
-    const { code, seqNumber } = await generateEntityCode('Buyer');
+    const code = await generateEntityCode('Buyer');
     const finalBuyerData = {
       ...buyerData,
       buyerId,
       code,
-      seqNumber,
       createdByUserId: req.user._id,
     };
-
 
     const buyer = await Buyer.create(finalBuyerData);
 

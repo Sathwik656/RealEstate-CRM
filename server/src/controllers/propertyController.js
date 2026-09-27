@@ -211,9 +211,8 @@ const createProperty = async (req, res, next) => {
     if (!locDoc) {
       return res.status(400).json({ success: false, message: 'Invalid location selected' });
     }
-    const { code, seqNumber } = await generateEntityCode('Property', locDoc.code);
+    const code = await generateEntityCode('Property', locDoc.code);
     propertyData.code = code;
-    propertyData.seqNumber = seqNumber;
 
     if (req.user.role === 'admin') {
       propertyData.createdByUserId = req.user._id;
@@ -235,12 +234,11 @@ const createProperty = async (req, res, next) => {
     } else if (req.body.newSeller) {
       // Create new seller inline
       const sellerIdGen = generateId('SEL');
-      const { code: sellerCode, seqNumber: sellerSeq } = await generateEntityCode('Seller');
+      const sellerCode = await generateEntityCode('Seller');
       seller = await Seller.create({
         ...req.body.newSeller,
         sellerId: sellerIdGen,
         code: sellerCode,
-        seqNumber: sellerSeq,
         createdByUserId: req.user._id,
       });
       if (!propertyData.contactNumber) {
@@ -299,7 +297,7 @@ const updateProperty = async (req, res, next) => {
     if (req.body.location && req.body.location !== oldProperty.location?.toString()) {
       const locDoc = await LocationCode.findById(req.body.location);
       if (locDoc) {
-        req.body.code = reconstructPropertyCode(oldProperty.seqNumber, locDoc.code);
+        req.body.code = reconstructPropertyCode(oldProperty.code, locDoc.code);
       }
     }
 
@@ -457,6 +455,23 @@ const exportProperties = async (req, res, next) => {
   }
 };
 
+// ─── Get Property Interests ──────────────────────────────────────────
+const getPropertyInterests = async (req, res, next) => {
+  try {
+    const PropertyInterest = require('../models/PropertyInterest');
+    const interests = await PropertyInterest.find({ propertyId: req.params.id })
+      .populate('agentId', 'name email code phone')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: interests,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllProperties,
   exportProperties,
@@ -467,4 +482,5 @@ module.exports = {
   deleteProperty,
   updatePropertyStatus,
   propertyValidation,
+  getPropertyInterests,
 };

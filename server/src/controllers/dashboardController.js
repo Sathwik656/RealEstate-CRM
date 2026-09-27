@@ -13,12 +13,18 @@ const getDashboardStats = async (req, res, next) => {
     const propertyFilter = {};
     const isAdmin = req.user.role === 'admin';
 
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const [
       totalProperties,
       availableProperties,
       soldProperties,
+      inDealProperties,
       totalSellers,
+      recentSellers,
       totalBuyers,
+      recentBuyers,
       activeBuyers,
       ongoingDeals,
       pendingApprovals,
@@ -27,12 +33,21 @@ const getDashboardStats = async (req, res, next) => {
       Property.countDocuments(propertyFilter),
       Property.countDocuments({ ...propertyFilter, propertyStatus: 'Available' }),
       Property.countDocuments({ ...propertyFilter, propertyStatus: 'Sold' }),
+      Property.countDocuments({ ...propertyFilter, propertyStatus: 'In Deal' }),
       Seller.countDocuments(isAdmin ? {} : { referredByAgentId: req.user._id }),
+      Seller.countDocuments({ 
+        ...(isAdmin ? {} : { referredByAgentId: req.user._id }),
+        createdAt: { $gte: sevenDaysAgo }
+      }),
       Buyer.countDocuments(isAdmin ? {} : { referredByAgentId: req.user._id }),
+      Buyer.countDocuments({ 
+        ...(isAdmin ? {} : { referredByAgentId: req.user._id }),
+        createdAt: { $gte: sevenDaysAgo }
+      }),
       Buyer.countDocuments(isAdmin ? { status: 'Active' } : { status: 'Active', referredByAgentId: req.user._id }),
       // Deal counts — admin sees all, agent sees their own
-      Deal.countDocuments(isAdmin ? { status: 'ongoing' } : { agentId: req.user._id, status: 'ongoing' }),
-      Deal.countDocuments(isAdmin ? { status: 'pending_approval' } : { agentId: req.user._id, status: 'pending_approval' }),
+      Deal.countDocuments(isAdmin ? { status: 'ongoing' } : { currentAgentId: req.user._id, status: 'ongoing' }),
+      Deal.countDocuments(isAdmin ? { status: 'pending_approval' } : { currentAgentId: req.user._id, status: 'pending_approval' }),
       Property.countDocuments({ propertyStatus: 'In Allotment' }),
     ]);
 
@@ -43,8 +58,11 @@ const getDashboardStats = async (req, res, next) => {
         totalProperties,
         availableProperties,
         soldProperties,
+        inDealProperties,
         totalSellers,
+        recentSellers,
         totalBuyers,
+        recentBuyers,
         activeBuyers,
         ongoingDeals,
         pendingApprovals,

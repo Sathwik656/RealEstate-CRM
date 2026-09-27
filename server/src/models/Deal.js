@@ -14,15 +14,24 @@ const dealSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // The original agent who was first assigned this deal (preserved forever for history)
     agentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
       index: true,
     },
+    // The agent who is CURRENTLY assigned and actively working the deal.
+    // Updated on every reassignment. Set to null when unassigned without replacement.
+    currentAgentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
     status: {
       type: String,
-      enum: ['ongoing', 'pending_approval', 'completed'],
+      enum: ['ongoing', 'unassign_requested', 'pending_approval', 'completed'],
       default: 'ongoing',
       index: true,
     },
@@ -39,13 +48,24 @@ const dealSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Set when current agent requests to be unassigned
+    unassignRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    unassignReason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Index for quickly finding deals owned by an agent with a given status
+// Index for quickly finding deals by current agent with a given status
+dealSchema.index({ currentAgentId: 1, status: 1 });
 dealSchema.index({ agentId: 1, status: 1 });
 
 module.exports = mongoose.model('Deal', dealSchema);

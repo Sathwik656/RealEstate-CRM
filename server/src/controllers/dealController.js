@@ -21,12 +21,20 @@ const approveDealValidation = [
 /**
  * GET /api/deals/my
  * Agent fetches their own deals.
+ * Shows deals where the agent is currently assigned (currentAgentId),
+ * plus completed deals they were involved with (agentId).
  */
 const getMyDeals = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const filter = { agentId: req.user._id };
-    if (status) filter.status = status;
+    const agentId = req.user._id;
+
+    let filter;
+    if (status) {
+      filter = { currentAgentId: agentId, status };
+    } else {
+      filter = { currentAgentId: agentId };
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Deal.countDocuments(filter);
@@ -42,6 +50,7 @@ const getMyDeals = async (req, res, next) => {
           { path: 'referredByAgentId', select: 'name email code' },
         ],
       })
+      .populate('currentAgentId', 'name email code')
       .populate('agentId', 'name email code');
 
     return res.status(200).json({
@@ -84,6 +93,7 @@ const getAllDeals = async (req, res, next) => {
           { path: 'referredByAgentId', select: 'name email code' },
         ],
       })
+      .populate('currentAgentId', 'name email code')
       .populate('agentId', 'name email code');
 
     return res.status(200).json({
@@ -104,7 +114,7 @@ const getAllDeals = async (req, res, next) => {
 
 /**
  * GET /api/deals/:id
- * Admin OR the agent who owns the deal can view it.
+ * Admin OR the agent currently assigned (or original) can view it.
  */
 const getDealById = async (req, res, next) => {
   try {
@@ -117,15 +127,21 @@ const getDealById = async (req, res, next) => {
           { path: 'referredByAgentId', select: 'name email code' },
         ],
       })
+      .populate('currentAgentId', 'name email code')
       .populate('agentId', 'name email code');
 
     if (!deal) {
       return res.status(404).json({ success: false, message: 'Deal not found' });
     }
 
-    // Agents can only view their own deals
-    if (req.user.role === 'agent' && deal.agentId._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+    // Agents can view a deal only if they are the current or original agent
+    if (req.user.role === 'agent') {
+      const uid = req.user._id.toString();
+      const isCurrentAgent = deal.currentAgentId?._id?.toString() === uid;
+      const isOriginalAgent = deal.agentId?._id?.toString() === uid;
+      if (!isCurrentAgent && !isOriginalAgent) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
     }
 
     return res.status(200).json({
@@ -140,20 +156,20 @@ const getDealById = async (req, res, next) => {
 
 /**
  * PATCH /api/deals/:id/done
- * Agent marks their ongoing deal as pending_approval.
+ * Only the CURRENTLY assigned agent can mark a deal as done.
  */
 const markDealDone = async (req, res, next) => {
   try {
     const deal = await Deal.findOne({
       _id: req.params.id,
-      agentId: req.user._id,
+      currentAgentId: req.user._id,
       status: 'ongoing',
     });
 
     if (!deal) {
       return res.status(404).json({
         success: false,
-        message: 'Deal not found, or it is not yours, or it is not in ongoing status.',
+        message: 'Deal not found, or you are not the currently assigned agent, or the deal is not ongoing.',
       });
     }
 
@@ -163,10 +179,11 @@ const markDealDone = async (req, res, next) => {
 
     const populated = await Deal.findById(deal._id)
       .populate({ path: 'propertyId', populate: { path: 'location' } })
+      .populate('currentAgentId', 'name email code')
       .populate('agentId', 'name email code');
 
-    // Trigger notification
-    notifyDealCompleted(populated, populated.propertyId, populated.agentId);
+    // Notify all admins
+    notifyDealCompleted(populated, populated.propertyId, populated.currentAgentId);
 
     return res.status(200).json({
       success: true,
@@ -180,7 +197,8 @@ const markDealDone = async (req, res, next) => {
 
 /**
  * PATCH /api/deals/:id/approve
- * Admin approves a pending deal, enters closing price, marks property sold, creates Report.
+ * Admin approves a pending deal.
+ * Report is credited to the CURRENT (completing) agent — deal.currentAgentId.
  */
 const approveDeal = async (req, res, next) => {
   try {
@@ -196,6 +214,14 @@ const approveDeal = async (req, res, next) => {
       });
     }
 
+    // currentAgentId must be set to approve
+    if (!deal.currentAgentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot approve: deal has no currently assigned agent.',
+      });
+    }
+
     const now = new Date();
 
     // 1. Update deal
@@ -207,7 +233,7 @@ const approveDeal = async (req, res, next) => {
     // 2. Mark property as Sold
     await Property.findByIdAndUpdate(deal.propertyId._id, { propertyStatus: 'Sold' });
 
-    // 3. Create Report — findOneAndUpdate with upsert prevents duplicates
+    // 3. Create Report — credited to the COMPLETING (current) agent
     const reportId = generateId('RPT');
     const report = await Report.findOneAndUpdate(
       { dealId: deal._id },
@@ -216,7 +242,7 @@ const approveDeal = async (req, res, next) => {
           reportId,
           dealId: deal._id,
           propertyId: deal.propertyId._id,
-          agentId: deal.agentId,
+          agentId: deal.currentAgentId,   // completing agent
           closingPrice: Number(closingPrice),
           originalPrice: deal.propertyId.price || null,
           completedAt: now,
@@ -227,10 +253,11 @@ const approveDeal = async (req, res, next) => {
 
     const populatedDeal = await Deal.findById(deal._id)
       .populate({ path: 'propertyId', populate: { path: 'location' } })
+      .populate('currentAgentId', 'name email code')
       .populate('agentId', 'name email code');
 
-    // Trigger notification
-    notifyDealApproved(populatedDeal, populatedDeal.propertyId, populatedDeal.agentId);
+    // Notify completing agent
+    notifyDealApproved(populatedDeal, populatedDeal.propertyId, deal.currentAgentId);
 
     return res.status(200).json({
       success: true,

@@ -9,6 +9,7 @@ const {
   approveDeal,
   approveDealValidation,
 } = require('../controllers/dealController');
+const { requestUnassignment } = require('../controllers/reassignmentController');
 const { auth, authorizeRoles } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
@@ -19,6 +20,9 @@ router.get('/my', authorizeRoles('agent'), getMyDeals);
 
 // Agent: mark deal as done
 router.patch('/:id/done', authorizeRoles('agent'), markDealDone);
+
+// Agent: request unassignment from their current deal
+router.patch('/:id/request-unassign', authorizeRoles('agent'), requestUnassignment);
 
 // Admin: view all deals (filterable by status)
 router.get('/', authorizeRoles('admin'), getAllDeals);

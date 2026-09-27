@@ -37,9 +37,6 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    seqNumber: {
-      type: Number,
-    },
   },
   {
     timestamps: true,

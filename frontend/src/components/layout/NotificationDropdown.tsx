@@ -10,7 +10,8 @@ import {
   ClipboardCheck, 
   CheckCircle2,
   X,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '@/lib/api';
@@ -51,6 +52,14 @@ export function NotificationDropdown({
 
   const markAllAsRead = useMutation({
     mutationFn: async () => api.patch('/notifications/read-all'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-notifications'] });
+    },
+  });
+
+  const clearAllNotifications = useMutation({
+    mutationFn: async () => api.delete('/notifications/clear-all'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-notifications'] });
@@ -196,6 +205,20 @@ export function NotificationDropdown({
                 >
                   <CheckCheck size={13} className="flex-shrink-0" />
                   <span>Mark all read</span>
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear all notifications?')) {
+                      clearAllNotifications.mutate();
+                    }
+                  }}
+                  disabled={clearAllNotifications.isPending}
+                  className="text-[10px] sm:text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors flex items-center gap-1 bg-red-50 px-2 py-1 rounded-lg border border-red-200/60 active:scale-95 whitespace-nowrap flex-shrink-0"
+                >
+                  <Trash2 size={13} className="flex-shrink-0" />
+                  <span>Clear all</span>
                 </button>
               )}
               <button 

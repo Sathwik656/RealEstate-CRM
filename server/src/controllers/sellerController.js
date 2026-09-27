@@ -90,12 +90,11 @@ const getSellerById = async (req, res, next) => {
 const createSeller = async (req, res, next) => {
   try {
     const sellerId = generateId('SEL');
-    const { code, seqNumber } = await generateEntityCode('Seller');
+    const code = await generateEntityCode('Seller');
     const sellerData = {
       ...req.body,
       sellerId,
       code,
-      seqNumber,
       createdByUserId: req.user._id,
     };
 

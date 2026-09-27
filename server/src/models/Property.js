@@ -22,9 +22,6 @@ const propertySchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    seqNumber: {
-      type: Number,
-    },
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Seller',

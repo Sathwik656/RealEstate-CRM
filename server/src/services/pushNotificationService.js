@@ -35,10 +35,6 @@ const saveToDb = async (userIds, payload, type) => {
 
 // ─── Send Notification to a Single Subscription ─────────────────────────────────
 
-/**
- * Send a push notification to a specific subscription.
- * Returns true on success, false if the subscription should be removed.
- */
 const sendToSubscription = async (subscription, payload) => {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return false;
   try {
@@ -64,9 +60,6 @@ const sendToSubscription = async (subscription, payload) => {
 
 // ─── Send Notification to a Single User (All Devices) ────────────────────────────
 
-/**
- * Send a push notification to all active subscriptions of a user.
- */
 const sendNotificationToUser = async (userId, payload) => {
   const subscriptions = await PushSubscription.find({ userId });
   if (!subscriptions.length) return { sent: 0, failed: 0 };
@@ -82,14 +75,8 @@ const sendNotificationToUser = async (userId, payload) => {
 
 // ─── Notify All Eligible Users ───────────────────────────────────────────────────
 
-/**
- * Send push notifications for a new property to all users with notifications enabled.
- * Excludes the user who created the property (excludeUserId).
- */
 const notifyAllEligibleAgents = async (property, excludeUserId) => {
   try {
-    // Find all active users (agents and admins), excluding the creator
-    // We notify them even if push is disabled so they get it in their in-app history.
     const eligibleUsers = await User.find({ _id: { $ne: excludeUserId } }).select('_id notificationsEnabled');
     if (!eligibleUsers.length) return;
 
@@ -109,10 +96,8 @@ const notifyAllEligibleAgents = async (property, excludeUserId) => {
       },
     };
 
-    // Save to DB for everyone
     await saveToDb(eligibleUsers.map(u => u._id), payload, 'PROPERTY_CREATED');
 
-    // Push to those who have push enabled
     const pushUsers = eligibleUsers.filter(u => u.notificationsEnabled);
     await Promise.allSettled(pushUsers.map((user) => sendNotificationToUser(user._id, payload)));
   } catch (err) {
@@ -120,7 +105,7 @@ const notifyAllEligibleAgents = async (property, excludeUserId) => {
   }
 };
 
-// ─── Add Specific Notification Helpers ──────────────────────────────────────────
+// ─── Specific Notification Helpers ──────────────────────────────────────────────
 
 const notifyAgentInterested = async (property, agent) => {
   try {
@@ -170,9 +155,12 @@ const notifyDealCompleted = async (deal, property, agent) => {
     const admins = await User.find({ role: 'admin' }).select('_id notificationsEnabled');
     if (!admins.length) return;
 
+    const agentName = agent?.name || agent?.email || 'Agent';
+    const propertyLabel = `${property.propertyTitle} (${property.code || property.propertyId})`;
+
     const payload = {
       title: 'Deal Completed',
-      body: `${agent.name || agent.email} has completed the deal for ${property.propertyTitle} (${property.code || property.propertyId}). Awaiting your approval.`,
+      body: `${agentName} has completed the deal for ${propertyLabel}. Awaiting your approval.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deal-approvals' },
@@ -208,6 +196,95 @@ const notifyDealApproved = async (deal, property, agentId) => {
   }
 };
 
+// ─── NEW: Unassignment & Reassignment Notifications ─────────────────────────────
+
+/**
+ * Notify all admins that an agent has requested unassignment.
+ */
+const notifyUnassignmentRequested = async (deal, property, agent) => {
+  try {
+    const admins = await User.find({ role: 'admin' }).select('_id notificationsEnabled');
+    if (!admins.length) return;
+
+    const agentName = agent?.name || agent?.email || 'Agent';
+    const propertyLabel = property?.propertyTitle
+      ? `${property.propertyTitle} (${property.code || ''})`
+      : 'a property';
+
+    const payload = {
+      title: 'Unassignment Request',
+      body: `${agentName} has requested to be unassigned from ${propertyLabel}.`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: '/allotments' },
+    };
+
+    await saveToDb(admins.map(a => a._id), payload, 'UNASSIGN_REQUESTED');
+    const pushAdmins = admins.filter(a => a.notificationsEnabled);
+    await Promise.allSettled(pushAdmins.map(a => sendNotificationToUser(a._id, payload)));
+  } catch (err) {
+    console.error('notifyUnassignmentRequested error:', err);
+  }
+};
+
+/**
+ * Notify an agent that a property has been reassigned to them.
+ */
+const notifyPropertyReassigned = async (property, newAgentId) => {
+  try {
+    const agent = await User.findById(newAgentId).select('_id notificationsEnabled');
+    if (!agent) return;
+
+    const propertyLabel = property?.propertyTitle
+      ? `${property.propertyTitle} (${property.code || ''})`
+      : 'a property';
+
+    const payload = {
+      title: 'Property Reassigned to You',
+      body: `You have been assigned ${propertyLabel}. Check your ongoing deals.`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: '/deals' },
+    };
+
+    await saveToDb([agent._id], payload, 'PROPERTY_REASSIGNED');
+    if (agent.notificationsEnabled) {
+      await sendNotificationToUser(agent._id, payload);
+    }
+  } catch (err) {
+    console.error('notifyPropertyReassigned error:', err);
+  }
+};
+
+/**
+ * Notify an agent that their assignment has been ended by admin.
+ */
+const notifyAgentUnassigned = async (property, oldAgentId) => {
+  try {
+    const agent = await User.findById(oldAgentId).select('_id notificationsEnabled');
+    if (!agent) return;
+
+    const propertyLabel = property?.propertyTitle
+      ? `${property.propertyTitle} (${property.code || ''})`
+      : 'a property';
+
+    const payload = {
+      title: 'Assignment Ended',
+      body: `Your assignment to ${propertyLabel} has been ended by an administrator.`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: '/deals' },
+    };
+
+    await saveToDb([agent._id], payload, 'AGENT_UNASSIGNED');
+    if (agent.notificationsEnabled) {
+      await sendNotificationToUser(agent._id, payload);
+    }
+  } catch (err) {
+    console.error('notifyAgentUnassigned error:', err);
+  }
+};
+
 module.exports = {
   sendNotificationToUser,
   notifyAllEligibleAgents,
@@ -215,4 +292,8 @@ module.exports = {
   notifyPropertyAssigned,
   notifyDealCompleted,
   notifyDealApproved,
+  // New
+  notifyUnassignmentRequested,
+  notifyPropertyReassigned,
+  notifyAgentUnassigned,
 };

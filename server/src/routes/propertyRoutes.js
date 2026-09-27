@@ -17,6 +17,7 @@ router.get('/stats', getPropertyStats);
 router.get('/export', exportProperties);
 router.get('/', getAllProperties);
 router.get('/:id', getPropertyById);
+router.get('/:id/interests', require('../controllers/propertyController').getPropertyInterests);
 router.post('/', propertyValidation, validate, createProperty);
 router.put('/:id', updateProperty);
 router.delete('/:id', deleteProperty);

@@ -22,9 +22,6 @@ const buyerSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    seqNumber: {
-      type: Number,
-    },
     buyerName: {
       type: String,
       required: [true, 'Buyer name is required'],
@@ -44,6 +41,7 @@ const buyerSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    /* Not used currently */
     propertyTypeInterested: {
       type: String,
       enum: PROPERTY_TYPES,
@@ -54,6 +52,7 @@ const buyerSchema = new mongoose.Schema(
       required: [true, 'Purpose is required'],
       index: true,
     },
+    /* Not used currently */
     budgetMin: {
       type: Number,
       min: [0, 'Budget minimum cannot be negative'],

@@ -6,6 +6,7 @@ const {
   getAgentById,
   updateAgent,
   deleteAgent,
+  getAgentDashboard,
 } = require('../controllers/userController');
 const { auth, authorizeRoles } = require('../middleware/auth');
 
@@ -15,6 +16,7 @@ router.use(authorizeRoles('admin'));
 
 // Agent Management Routes
 router.get('/agents', getAllAgents);
+router.get('/agents/:id/dashboard', getAgentDashboard);
 router.get('/agents/:id', getAgentById);
 router.put('/agents/:id', updateAgent);
 router.delete('/agents/:id', deleteAgent);

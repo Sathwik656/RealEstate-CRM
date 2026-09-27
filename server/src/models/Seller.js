@@ -13,9 +13,6 @@ const sellerSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
-    seqNumber: {
-      type: Number,
-    },
     sellerName: {
       type: String,
       required: [true, 'Seller name is required'],

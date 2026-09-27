@@ -2,14 +2,12 @@
 const User = require('../models/User');
 const Report = require('../models/Report');
 const Property = require('../models/Property');
+const Deal = require('../models/Deal');
+const PropertyInterest = require('../models/PropertyInterest');
+const DealAssignment = require('../models/DealAssignment');
 const mongoose = require('mongoose');
-const { validationResult } = require('express-validator');
 
-// ─── Helper Functions ──────────────────────────────────────────────────────
-
-/**
- * Calculates propertiesSold and total revenue for given agent IDs
- */
+// ... (keep existing helper functions)
 const getAgentStatsMap = async (agentIds) => {
   if (!agentIds || agentIds.length === 0) return {};
 
@@ -91,11 +89,6 @@ const getAgentStatsMap = async (agentIds) => {
 
 // ─── Controller Functions ──────────────────────────────────────────────────
 
-/**
- * @desc    Get all agents
- * @route   GET /api/users/agents
- * @access  Private/Admin
- */
 const getAllAgents = async (req, res, next) => {
   try {
     const agents = await User.find({ role: 'agent' }).select('-password').sort({ createdAt: -1 });
@@ -121,11 +114,6 @@ const getAllAgents = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Get agent by ID
- * @route   GET /api/users/agents/:id
- * @access  Private/Admin
- */
 const getAgentById = async (req, res, next) => {
   try {
     const agent = await User.findOne({ _id: req.params.id, role: 'agent' }).select('-password');
@@ -151,16 +139,10 @@ const getAgentById = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Update agent details
- * @route   PUT /api/users/agents/:id
- * @access  Private/Admin
- */
 const updateAgent = async (req, res, next) => {
   try {
     const { name, email } = req.body;
 
-    // Check if the user exists and is an agent
     const agent = await User.findOne({ _id: req.params.id, role: 'agent' });
     if (!agent) {
       return res.status(404).json({
@@ -169,7 +151,6 @@ const updateAgent = async (req, res, next) => {
       });
     }
 
-    // Check if new email is already in use by someone else
     if (email && email !== agent.email) {
       const emailExists = await User.findOne({ email });
       if (emailExists) {
@@ -185,7 +166,6 @@ const updateAgent = async (req, res, next) => {
 
     await agent.save();
 
-    // Do not return password
     const updatedAgent = agent.toObject();
     delete updatedAgent.password;
 
@@ -199,11 +179,6 @@ const updateAgent = async (req, res, next) => {
   }
 };
 
-/**
- * @desc    Delete agent
- * @route   DELETE /api/users/agents/:id
- * @access  Private/Admin
- */
 const deleteAgent = async (req, res, next) => {
   try {
     const agent = await User.findOneAndDelete({ _id: req.params.id, role: 'agent' });
@@ -223,9 +198,101 @@ const deleteAgent = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get agent-centric dashboard
+ * @route   GET /api/users/agents/:id/dashboard
+ * @access  Private/Admin
+ */
+const getAgentDashboard = async (req, res, next) => {
+  try {
+    const agentId = req.params.id;
+    const agent = await User.findOne({ _id: agentId, role: 'agent' }).select('-password');
+    if (!agent) {
+      return res.status(404).json({ success: false, message: 'Agent not found.' });
+    }
+
+    // 1. Current Properties (Deals)
+    let currentProperties = await Deal.find({
+      currentAgentId: agentId,
+      status: { $ne: 'completed' },
+    }).populate({ path: 'propertyId', populate: { path: 'location' } })
+      .sort({ createdAt: -1 });
+    currentProperties = currentProperties.filter(d => d.propertyId != null);
+
+    // 2. Interested Properties (Waiting/Interested)
+    let interestedProperties = await PropertyInterest.find({
+      agentId,
+      status: { $in: ['interested', 'waiting'] },
+    }).populate({ 
+      path: 'propertyId', 
+      match: { propertyStatus: { $in: ['Available', 'In Allotment', 'In Deal'] } }, // Only show active properties
+      populate: { path: 'location' } 
+    }).sort({ createdAt: -1 });
+    // Filter out deleted properties or properties that are no longer active (e.g. Sold)
+    interestedProperties = interestedProperties.filter(i => i.propertyId != null);
+
+    // 3. Completed Deals
+    let completedDeals = await Deal.find({
+      currentAgentId: agentId,
+      status: 'completed',
+    }).populate({ path: 'propertyId', populate: { path: 'location' } })
+      .sort({ completedAt: -1 });
+    completedDeals = completedDeals.filter(d => d.propertyId != null);
+
+    // 4. Returned / Reassigned Properties
+    let reassignedProperties = await DealAssignment.find({
+      agentId,
+      endedAt: { $ne: null },
+    }).populate({ path: 'propertyId', populate: { path: 'location' } })
+      .populate('dealId')
+      .populate('assignedBy', 'name')
+      .sort({ endedAt: -1 });
+    reassignedProperties = reassignedProperties.filter(h => h.propertyId != null);
+      
+    // Populate the current deal's current agent if it exists for returned/reassigned
+    for (let doc of reassignedProperties) {
+      if (doc.dealId && doc.dealId.currentAgentId) {
+        await doc.dealId.populate('currentAgentId', 'name code');
+      }
+    }
+
+    // 5. Assignment History (All assignments involving this agent)
+    let assignmentHistory = await DealAssignment.find({
+      $or: [{ agentId }, { previousAgentId: agentId }],
+    }).populate({ path: 'propertyId', populate: { path: 'location' } })
+      .populate('agentId', 'name code')
+      .populate('previousAgentId', 'name code')
+      .populate('assignedBy', 'name')
+      .populate('endedBy', 'name')
+      .sort({ createdAt: -1 });
+    assignmentHistory = assignmentHistory.filter(h => h.propertyId != null);
+
+    const statsMap = await getAgentStatsMap([agent._id]);
+    const agentObj = agent.toObject();
+    const stats = statsMap[agent._id.toString()] || { propertiesSold: 0, revenue: 0 };
+    agentObj.propertiesSold = stats.propertiesSold;
+    agentObj.revenue = stats.revenue;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        agent: agentObj,
+        currentProperties,
+        interestedProperties,
+        completedDeals,
+        reassignedProperties,
+        assignmentHistory,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllAgents,
   getAgentById,
   updateAgent,
   deleteAgent,
+  getAgentDashboard,
 };

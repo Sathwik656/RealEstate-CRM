@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { 
-  Building2, 
-  Tag, 
-  Users, 
-  Clock, 
-  Handshake, 
-  Plus, 
-  ArrowUpRight, 
+import {
+  Building2,
+  Tag,
+  Users,
+  Clock,
+  Handshake,
+  Plus,
+  ArrowUpRight,
   ChevronRight,
   CheckCircle2,
   AlertCircle
@@ -31,65 +31,64 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
   const kpiCards = [
     {
       title: 'Total Properties',
-      value: statsData?.totalProperties ?? 14,
+      value: statsData?.totalProperties ?? 0,
       icon: Building2,
-      iconBg: 'bg-indigo-50/80 border-indigo-100 text-indigo-600',
-      sparklineColor: '#6366F1',
-      trend: '+4 this week',
-      trendType: 'positive',
+      subInfo: (
+        <div className="flex items-center gap-1.5 text-[10px] text-muted font-medium">
+          <span>{statsData?.availableProperties ?? 0} Avail</span>•
+          <span>{statsData?.inDealProperties ?? 0} Deal</span>•
+          <span>{statsData?.soldProperties ?? 0} Sold</span>
+        </div>
+      ),
       link: '/properties',
     },
     {
       title: 'Total Sellers',
-      value: statsData?.totalSellers ?? 6,
+      value: statsData?.totalSellers ?? 0,
       icon: Tag,
-      iconBg: 'bg-violet-50/80 border-violet-100 text-violet-600',
-      sparklineColor: '#8B5CF6',
-      trend: 'Verified partners',
-      trendType: 'neutral',
+      subInfo: (
+        <div className="text-[10px] text-muted font-medium">
+          <span className="text-[#B5923E] font-bold">+{statsData?.recentSellers ?? 0}</span> recently added
+        </div>
+      ),
       link: '/sellers',
     },
     {
       title: 'Total Buyers',
-      value: statsData?.totalBuyers ?? 38,
+      value: statsData?.totalBuyers ?? 0,
       icon: Users,
-      iconBg: 'bg-emerald-50/80 border-emerald-100 text-emerald-600',
-      sparklineColor: '#10B981',
-      trend: '+12% vs last mo.',
-      trendType: 'positive',
+      subInfo: (
+        <div className="text-[10px] text-muted font-medium">
+          <span className="text-[#B5923E] font-bold">+{statsData?.recentBuyers ?? 0}</span> recently added
+        </div>
+      ),
       link: '/buyers',
     },
     ...(isAdmin ? [{
       title: 'Pending Approvals',
       value: statsData?.pendingApprovals ?? 0,
       icon: Clock,
-      iconBg: 'bg-amber-50/80 border-amber-100 text-amber-600',
-      sparklineColor: '#F59E0B',
-      trend: (statsData?.pendingApprovals ?? 0) > 0 ? 'Requires action' : 'All caught up',
-      trendType: (statsData?.pendingApprovals ?? 0) > 0 ? 'warning' : 'neutral',
+      statusMsg: (statsData?.pendingApprovals ?? 0) > 0 ? 'Needs attention' : 'All caught up',
+      statusType: (statsData?.pendingApprovals ?? 0) > 0 ? 'warning' : 'success',
       link: '/deal-approvals',
     }] : []),
     isAdmin
       ? {
-          title: 'Allotment Requests',
-          value: statsData?.allotmentRequests ?? 0,
-          icon: Handshake,
-          iconBg: 'bg-orange-50/80 border-orange-100 text-orange-600',
-          sparklineColor: '#F97316',
-          trend: (statsData?.allotmentRequests ?? 0) > 0 ? 'Requires review' : 'No pending requests',
-          trendType: (statsData?.allotmentRequests ?? 0) > 0 ? 'warning' : 'neutral',
-          link: '/allotments',
-        }
+        title: 'Allotment Requests',
+        value: statsData?.allotmentRequests ?? 0,
+        icon: Handshake,
+        statusMsg: (statsData?.allotmentRequests ?? 0) > 0 ? 'Action required' : 'No pending requests',
+        statusType: (statsData?.allotmentRequests ?? 0) > 0 ? 'warning' : 'success',
+        link: '/allotments',
+      }
       : {
-          title: 'Ongoing Deals',
-          value: statsData?.ongoingDeals ?? 0,
-          icon: Handshake,
-          iconBg: 'bg-orange-50/80 border-orange-100 text-orange-600',
-          sparklineColor: '#F97316',
-          trend: 'Active pipeline',
-          trendType: 'positive',
-          link: '/deals',
-        },
+        title: 'Ongoing Deals',
+        value: statsData?.ongoingDeals ?? 0,
+        icon: Handshake,
+        statusMsg: 'Active pipeline',
+        statusType: 'neutral',
+        link: '/deals',
+      },
   ];
 
   const propertyTypes = chartsData?.propertyTypeDistribution ?? [
@@ -108,9 +107,6 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
             <h1 className="text-xl font-display font-bold text-primary tracking-tight">
               Welcome back, Verandah Reality
             </h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent/10 text-accent border border-accent/20">
-              PRO CRM
-            </span>
           </div>
           <p className="text-xs text-muted mt-1">
             Here is an overview of your real estate portfolio, metrics, and active deals.
@@ -131,7 +127,19 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
         </div>
       </div>
 
-      {/* 2. 5 Core KPI Metric Cards */}
+      {/* 2. Live Metrics Header */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-display font-bold text-primary tracking-tight">Live Metrics</h2>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Live</span>
+          </div>
+        </div>
+        <p className="text-xs text-muted mt-0.5">Real-time overview of your CRM activity</p>
+      </div>
+
+      {/* 5 Core KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {kpiCards.map((kpi, idx) => {
           const Icon = kpi.icon;
@@ -139,38 +147,41 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
             <Link
               key={idx}
               to={kpi.link}
-              className="card p-4 hover:border-slate-300 hover:shadow-md transition-all duration-200 group flex flex-col justify-between rounded-2xl bg-surface border border-border/80"
+              className="group flex flex-col p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-[#B5923E]/40 transition-all duration-200 relative overflow-hidden"
             >
-              {/* Header: Icon Capsule & Sparkline */}
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${kpi.iconBg} transition-transform group-hover:scale-105`}>
-                  <Icon size={18} />
-                </div>
-                <Sparkline color={kpi.sparklineColor} />
-              </div>
-
-              {/* Metric Title & Value */}
-              <div>
-                <p className="text-xs font-medium text-muted tracking-tight">{kpi.title}</p>
-                <div className="flex items-baseline justify-between mt-1">
-                  <p className="text-2xl font-display font-bold text-primary">{kpi.value}</p>
+              {/* Highlight bar for attention items */}
+              {kpi.statusType === 'warning' && (
+                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
+              )}
+              
+              <div className="flex items-start justify-between mb-2">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-600 group-hover:text-[#B5923E] group-hover:bg-[#B5923E]/5 transition-colors">
+                  <Icon size={20} strokeWidth={1.5} />
                 </div>
               </div>
+              
+              <div className="mt-1">
+                <p className="text-3xl font-display font-bold text-slate-900 group-hover:text-[#B5923E] transition-colors">{kpi.value}</p>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5 tracking-tight">{kpi.title}</p>
+              </div>
 
-              {/* Footer: Trend Tag */}
-              <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
-                <span
-                  className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    kpi.trendType === 'positive'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      : kpi.trendType === 'warning'
-                      ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                      : 'bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}
-                >
-                  {kpi.trend}
-                </span>
-                <ArrowUpRight size={13} className="text-muted/60 group-hover:text-primary transition-colors" />
+              {/* Secondary Info area */}
+              <div className="mt-3 pt-3 border-t border-slate-100 min-h-[36px] flex items-center">
+                {kpi.subInfo ? (
+                  kpi.subInfo
+                ) : kpi.statusMsg ? (
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md ${
+                    kpi.statusType === 'warning' 
+                      ? 'bg-amber-50 text-amber-700' 
+                      : kpi.statusType === 'success'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-slate-50 text-slate-600'
+                  }`}>
+                    {kpi.statusType === 'warning' && <AlertCircle size={10} />}
+                    {kpi.statusType === 'success' && <CheckCircle2 size={10} />}
+                    {kpi.statusMsg}
+                  </span>
+                ) : null}
               </div>
             </Link>
           );
@@ -215,7 +226,7 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
                     if (prop.propertyStatus === 'In Deal') statusBg = 'bg-amber-50 text-amber-700 border-amber-200/80';
                     if (prop.propertyStatus === 'Sold') statusBg = 'bg-blue-50 text-blue-700 border-blue-200/80';
                     if (prop.propertyStatus === 'In Allotment') statusBg = 'bg-violet-50 text-violet-700 border-violet-200/80';
-                    
+
                     return (
                       <tr key={prop._id} className="hover:bg-surface-alt/50 transition-colors group">
                         <td className="py-3 px-3">
@@ -266,8 +277,8 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
                 </div>
               ) : (
                 notifications.map((notif: any) => (
-                  <Link 
-                    key={notif._id} 
+                  <Link
+                    key={notif._id}
                     to={notif.url || '#'}
                     className={`flex items-start gap-3 p-2.5 rounded-xl transition-colors border border-transparent ${notif.isRead ? 'hover:bg-surface-alt/60' : 'bg-surface-alt/60 border-accent/20 hover:bg-surface'}`}
                   >

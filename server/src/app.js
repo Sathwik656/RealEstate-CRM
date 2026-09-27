@@ -20,6 +20,7 @@ const dealRoutes = require('./routes/dealRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const allotmentRoutes = require('./routes/allotmentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const reassignmentRoutes = require('./routes/reassignmentRoutes');
 
 connectDB().then(() => {
   console.log('MongoDB connected');
@@ -63,6 +64,7 @@ app.use('/api/deals', dealRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/allotments', allotmentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reassignments', reassignmentRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 

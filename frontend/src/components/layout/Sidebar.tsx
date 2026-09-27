@@ -79,7 +79,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 py-6 px-4 space-y-6 overflow-y-auto no-scrollbar">
         {visibleGroups.map((group) => (
           <div key={group.title}>
             <div className="px-3.5 mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-accent/90">

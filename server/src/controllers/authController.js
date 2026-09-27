@@ -89,10 +89,9 @@ const register = async (req, res, next) => {
     }
 
     const userData = { name, email, password, role: userRole };
-    if (userRole === 'agent') {
-      const { code, seqNumber } = await generateEntityCode('Agent');
+    if (userData.role === 'agent') {
+      const code = await generateEntityCode('Agent');
       userData.code = code;
-      userData.seqNumber = seqNumber;
     }
 
     const user = await User.create(userData);
