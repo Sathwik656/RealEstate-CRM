@@ -207,33 +207,20 @@ export default function LoginPage() {
         className="hidden lg:flex w-1/2 flex-col justify-between p-12"
         style={{ background: 'linear-gradient(160deg, #1a1f2e 0%, #0d1117 100%)' }}
       >
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Veenu Real Estate" className="h-10 w-auto object-contain" />
-          <span className="text-white font-display font-bold text-xl tracking-wide">THE VERANDAH</span>
+        <div className="flex flex-col items-start gap-4 mt-8">
+          <img src="/app_icon.webp" alt="Veranda Realty" className="h-28 w-auto object-contain drop-shadow-2xl" />
+          <span className="text-white font-display font-bold text-2xl tracking-widest uppercase">VERANDA REALTY</span>
         </div>
 
-        <div>
-          <h1 className="text-4xl font-display font-bold text-white leading-tight mb-4">
-            Manage your<br />
-            <span style={{ color: '#c9a84c' }}>real estate</span><br />
-            business smarter.
+        <div className="mb-20">
+          <h1 className="text-5xl font-display font-bold text-white leading-[1.15] mb-6">
+            Elevate your<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#e6d089]">real estate</span><br />
+            experience.
           </h1>
-          <p className="text-white/50 text-base leading-relaxed max-w-sm">
-            A comprehensive CRM to track properties, sellers, and buyers — all in one place.
+          <p className="text-slate-300 text-lg leading-relaxed max-w-md font-light">
+            Empower your team with a state-of-the-art CRM designed to streamline property management, forge stronger client relationships, and accelerate your deal flow. Welcome to the future of real estate.
           </p>
-        </div>
-
-        <div className="flex gap-8">
-          {[
-            { label: 'Properties', value: '500+' },
-            { label: 'Clients', value: '1.2K+' },
-            { label: 'Deals Closed', value: '98%' },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <p className="text-2xl font-display font-bold text-white">{stat.value}</p>
-              <p className="text-xs text-white/40 uppercase tracking-wider mt-0.5">{stat.label}</p>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -241,9 +228,9 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 overflow-y-auto bg-[#f8fafc] lg:bg-background">
         <div className="w-full max-w-md py-6 sm:py-8">
           {/* Mobile Header / Branding */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <img src="/logo.png" alt="Veenu Real Estate" className="h-10 w-auto object-contain" />
-            <span className="font-display font-bold text-xl text-slate-900 tracking-wide">THE VERANDAH</span>
+          <div className="lg:hidden flex flex-col items-center justify-center gap-4 mb-10">
+            <img src="/app_icon.webp" alt="Veranda Realty" className="h-20 w-auto object-contain drop-shadow-md" />
+            <span className="font-display font-bold text-2xl text-slate-900 tracking-widest uppercase">VERANDA REALTY</span>
           </div>
 
           {step === 'login' ? (
