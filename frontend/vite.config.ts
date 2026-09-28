@@ -16,8 +16,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'The Verandah',
-        short_name: 'The Verandah',
+        name: 'Veranda Realty',
+        short_name: 'Veranda Realty',
         theme_color: '#1a1f2e',
         background_color: '#0d1117',
         display: 'standalone',
