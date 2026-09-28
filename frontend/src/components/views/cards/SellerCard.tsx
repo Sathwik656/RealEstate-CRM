@@ -1,7 +1,7 @@
-import { Eye, Edit, Phone, Mail, Home } from 'lucide-react';
+import { Eye, Edit, Phone, Mail, Home, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-export function SellerCard({ seller: s, onView, onEdit }: any) {
+export function SellerCard({ seller: s, onView, onEdit, onDelete }: any) {
   const { user } = useAuth();
   
   return (
@@ -47,22 +47,33 @@ export function SellerCard({ seller: s, onView, onEdit }: any) {
         </div>
       )}
 
-      <div className="mt-auto pt-4 border-t border-border flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-auto pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
         <button
-          className="btn-icon hover:text-accent hover:bg-accent/10"
+          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
           title="View details"
           onClick={onView}
         >
-          <Eye size={15} />
+          <Eye size={16} />
         </button>
         {user?.role === 'admin' && (
-          <button
-            className="btn-icon hover:text-blue-600 hover:bg-blue-50"
-            title="Edit"
-            onClick={onEdit}
-          >
-            <Edit size={15} />
-          </button>
+          <>
+            <button
+              className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Edit"
+              onClick={onEdit}
+            >
+              <Edit size={16} />
+            </button>
+            {onDelete && (
+              <button
+                className="flex-1 flex justify-center items-center py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="Delete"
+                onClick={onDelete}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

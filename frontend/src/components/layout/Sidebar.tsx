@@ -70,9 +70,8 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-20 flex items-center px-6 border-b border-white/5 relative">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Veenu CRM Logo" className="h-9 w-auto object-contain drop-shadow-md" />
           <span className="text-[17px] font-display font-bold text-white tracking-widest leading-none mt-1">
-            THE VERANDAH
+            VERANDA REALTY
           </span>
         </div>
         <div className="absolute bottom-0 left-6 right-6 h-[1px] bg-gradient-to-r from-accent/0 via-accent/30 to-accent/0" />

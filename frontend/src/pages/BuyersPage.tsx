@@ -102,7 +102,8 @@ export default function BuyersPage() {
                     key={b._id} 
                     buyer={b} 
                     onView={() => setViewingItem(b)} 
-                    onEdit={() => setEditingItem(b)} 
+                    onEdit={() => setEditingItem(b)}
+                    onDelete={() => handleDelete(b._id)} 
                   />
                 ))}
               </div>
@@ -111,10 +112,10 @@ export default function BuyersPage() {
         ) : (
           <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Purpose</th><th>BHK Requirement</th><th>Location</th><th>Budget Max</th><th>Referred By</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Purpose</th><th>BHK Requirement</th><th>Location</th><th>Budget Max</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={9} className="py-12 text-center text-muted">Loading...</td></tr>
-                : !data?.data?.length ? <tr><td colSpan={9} className="py-12 text-center text-muted">No buyers found.</td></tr>
+              {isLoading ? <tr><td colSpan={8} className="py-12 text-center text-muted">Loading...</td></tr>
+                : !data?.data?.length ? <tr><td colSpan={8} className="py-12 text-center text-muted">No buyers found.</td></tr>
                   : data.data.map((b: any) => (
                     <tr key={b._id} className="cursor-pointer" onClick={() => setViewingItem(b)}>
                       <td>
@@ -130,7 +131,7 @@ export default function BuyersPage() {
                       <td className="text-muted font-medium">{b.bhkRequirement ? `${b.bhkRequirement} BHK` : '—'}</td>
                       <td className="text-muted">{b.preferredLocation}</td>
                       <td className="font-medium">₹{b.budgetMax?.toLocaleString('en-IN') || 'N/A'}</td>
-                      <td><span className="text-sm text-muted">{b.referredByAgentId?.name || ''}</span></td>
+
                       <td>
                         <span className={clsx('badge',
                           b.status === 'Active' ? 'badge-green' :

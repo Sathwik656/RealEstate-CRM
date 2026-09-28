@@ -1,8 +1,8 @@
-import { Eye, Edit, Phone, MapPin, Tag } from 'lucide-react';
+import { Eye, Edit, Phone, MapPin, Tag, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 
-export function BuyerCard({ buyer: b, onView, onEdit }: any) {
+export function BuyerCard({ buyer: b, onView, onEdit, onDelete }: any) {
   const { user } = useAuth();
   
   return (
@@ -10,17 +10,17 @@ export function BuyerCard({ buyer: b, onView, onEdit }: any) {
       className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-5 flex flex-col h-full cursor-pointer"
       onClick={onView}
     >
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-start gap-3">
+      <div className="flex justify-between items-start mb-4 gap-2">
+        <div className="flex items-start gap-3 min-w-0">
           <div className="h-10 w-10 rounded-full bg-surface-alt flex items-center justify-center text-primary font-display font-semibold shrink-0">
             {b.buyerName?.charAt(0).toUpperCase() || 'B'}
           </div>
-          <div>
-            <h3 className="font-semibold text-primary line-clamp-1">{b.buyerName}</h3>
-            <div className="text-[10px] text-muted font-mono">{b.code}</div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-primary truncate">{b.buyerName}</h3>
+            <div className="text-[10px] text-muted font-mono truncate">{b.code}</div>
           </div>
         </div>
-        <span className={clsx('badge text-[10px]',
+        <span className={clsx('badge text-[10px] shrink-0',
           b.status === 'Active' ? 'badge-green' :
           b.status === 'Closed' ? 'badge-red' :
           b.status === 'Follow-up' ? 'badge-amber' : 'badge-gray'
@@ -65,22 +65,33 @@ export function BuyerCard({ buyer: b, onView, onEdit }: any) {
         </div>
       )}
 
-      <div className="mt-auto pt-4 border-t border-border flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-auto pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
         <button
-          className="btn-icon hover:text-accent hover:bg-accent/10"
+          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
           title="View details"
           onClick={onView}
         >
-          <Eye size={15} />
+          <Eye size={16} />
         </button>
         {user?.role === 'admin' && (
-          <button
-            className="btn-icon hover:text-blue-600 hover:bg-blue-50"
-            title="Edit"
-            onClick={onEdit}
-          >
-            <Edit size={15} />
-          </button>
+          <>
+            <button
+              className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Edit"
+              onClick={onEdit}
+            >
+              <Edit size={16} />
+            </button>
+            {onDelete && (
+              <button
+                className="flex-1 flex justify-center items-center py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="Delete"
+                onClick={onDelete}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

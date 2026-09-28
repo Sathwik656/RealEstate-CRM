@@ -1,4 +1,4 @@
-import { Eye, Edit, Handshake, MapPin, Tag, Square } from 'lucide-react';
+import { Eye, Edit, Handshake, MapPin, Tag, Square, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 
@@ -8,7 +8,8 @@ export function PropertyCard({
   onEdit, 
   onExpressInterest,
   expressingInterestId,
-  isExpressInterestPending
+  isExpressInterestPending,
+  onDelete
 }: any) {
   const { user } = useAuth();
   
@@ -55,43 +56,53 @@ export function PropertyCard({
         </div>
       )}
 
-      <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
-        <div className="font-display font-semibold text-primary">
+      <div className="mb-4 mt-auto">
+        <div className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1">Price</div>
+        <div className="font-display font-semibold text-primary text-lg">
           ₹{p.price?.toLocaleString('en-IN')}
         </div>
+      </div>
+
+      <div className="mt-auto pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
+        <button
+          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
+          title="View details"
+          onClick={onView}
+        >
+          <Eye size={16} />
+        </button>
         
-        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+        {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && (
           <button
-            className="btn-icon hover:text-accent hover:bg-accent/10"
-            title="View details"
-            onClick={onView}
+            className={clsx("flex-1 flex justify-center items-center py-2 rounded transition-colors gap-1.5", p.isApplied ? "bg-emerald-500/10 text-emerald-600 cursor-default" : "text-amber-500 hover:bg-amber-50 disabled:opacity-50")}
+            title={p.isApplied ? "You have already applied" : "Express interest in this property"}
+            disabled={p.isApplied || expressingInterestId === p._id || isExpressInterestPending}
+            onClick={() => !p.isApplied && onExpressInterest && onExpressInterest(p._id)}
           >
-            <Eye size={15} />
+            <Handshake size={16} />
           </button>
-          
-          {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && (
+        )}
+        
+        {user?.role === 'admin' && (
+          <>
             <button
-              className={clsx("btn btn-sm px-2 ml-1", p.isApplied ? "bg-emerald-500/10 text-emerald-600 cursor-default hover:bg-emerald-500/10" : "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50")}
-              title={p.isApplied ? "You have already applied" : "Express interest in this property"}
-              disabled={p.isApplied || expressingInterestId === p._id || isExpressInterestPending}
-              onClick={() => !p.isApplied && onExpressInterest && onExpressInterest(p._id)}
+              className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Edit"
+              onClick={onEdit}
             >
-              <Handshake size={13} />
+              <Edit size={16} />
             </button>
-          )}
-          
-          {user?.role === 'admin' && (
-            <>
+            {onDelete && (
               <button
-                className="btn-icon hover:text-blue-600 hover:bg-blue-50"
-                title="Edit"
-                onClick={onEdit}
+                className="flex-1 flex justify-center items-center py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="Delete"
+                onClick={onDelete}
               >
-                <Edit size={15} />
+                <Trash2 size={16} />
               </button>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

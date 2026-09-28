@@ -105,7 +105,7 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-display font-bold text-primary tracking-tight">
-              Welcome back, Verandah Reality
+              Welcome back, Veranda Realty
             </h1>
           </div>
           <p className="text-xs text-muted mt-1">
@@ -153,13 +153,13 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
               {kpi.statusType === 'warning' && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
               )}
-              
+
               <div className="flex items-start justify-between mb-2">
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-600 group-hover:text-[#B5923E] group-hover:bg-[#B5923E]/5 transition-colors">
                   <Icon size={20} strokeWidth={1.5} />
                 </div>
               </div>
-              
+
               <div className="mt-1">
                 <p className="text-3xl font-display font-bold text-slate-900 group-hover:text-[#B5923E] transition-colors">{kpi.value}</p>
                 <p className="text-xs font-semibold text-slate-500 mt-0.5 tracking-tight">{kpi.title}</p>
@@ -170,13 +170,12 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
                 {kpi.subInfo ? (
                   kpi.subInfo
                 ) : kpi.statusMsg ? (
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md ${
-                    kpi.statusType === 'warning' 
-                      ? 'bg-amber-50 text-amber-700' 
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md ${kpi.statusType === 'warning'
+                      ? 'bg-amber-50 text-amber-700'
                       : kpi.statusType === 'success'
                         ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-slate-50 text-slate-600'
-                  }`}>
+                    }`}>
                     {kpi.statusType === 'warning' && <AlertCircle size={10} />}
                     {kpi.statusType === 'success' && <CheckCircle2 size={10} />}
                     {kpi.statusMsg}

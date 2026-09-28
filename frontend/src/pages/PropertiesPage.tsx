@@ -335,6 +335,7 @@ export default function PropertiesPage() {
                     onExpressInterest={handleExpressInterest}
                     expressingInterestId={expressingInterestId}
                     isExpressInterestPending={expressInterestMutation.isPending}
+                    onDelete={() => handleDelete(p._id)}
                   />
                 ))}
               </div>

@@ -101,7 +101,8 @@ export default function SellersPage() {
                     key={s._id} 
                     seller={s} 
                     onView={() => setViewingItem(s)} 
-                    onEdit={() => setEditingItem(s)} 
+                    onEdit={() => setEditingItem(s)}
+                    onDelete={() => handleDelete(s._id)} 
                   />
                 ))}
               </div>

@@ -12,30 +12,7 @@ export function AgentCard({ agent, onView, onEdit, onDelete }: any) {
   return (
     <div className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-6 relative group h-full flex flex-col cursor-pointer" onClick={handleView}>
       
-      {/* Action Menu (Visible on hover) */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-border/50" onClick={(e) => e.stopPropagation()}>
-        <Link 
-          to={`/agents/${agent._id}`}
-          className="p-1.5 text-muted hover:text-accent rounded-md transition-colors"
-          title="View Details"
-        >
-          <Eye size={16} />
-        </Link>
-        <button 
-          onClick={onEdit} 
-          className="p-1.5 text-muted hover:text-blue-600 rounded-md transition-colors"
-          title="Edit Agent"
-        >
-          <Edit size={16} />
-        </button>
-        <button 
-          onClick={onDelete} 
-          className="p-1.5 text-muted hover:text-red-600 rounded-md transition-colors"
-          title="Delete Agent"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+
 
       {/* Header: Avatar & Name */}
       <div className="flex items-center gap-4 mb-6">
@@ -71,7 +48,7 @@ export function AgentCard({ agent, onView, onEdit, onDelete }: any) {
       <hr className="border-border/60 mb-4 mt-auto" />
 
       {/* Stats Footer */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-[10px] font-bold tracking-wider text-muted uppercase mb-1">Properties Sold</p>
           <p className="text-xl font-display font-bold text-[#c4a47c]">{agent.propertiesSold || 0}</p>
@@ -82,6 +59,32 @@ export function AgentCard({ agent, onView, onEdit, onDelete }: any) {
             ₹{(agent.revenue || 0).toLocaleString('en-IN')}
           </p>
         </div>
+      </div>
+
+      <div className="pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
+        <button
+          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
+          title="View details"
+          onClick={handleView}
+        >
+          <Eye size={16} />
+        </button>
+        <button
+          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+          title="Edit"
+          onClick={onEdit}
+        >
+          <Edit size={16} />
+        </button>
+        {onDelete && (
+          <button
+            className="flex-1 flex justify-center items-center py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="Delete"
+            onClick={onDelete}
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
     </div>
