@@ -10,7 +10,7 @@ interface SegmentedControlProps {
 
 export function SegmentedControl({ options, value, onChange, className }: SegmentedControlProps) {
   return (
-    <div className={clsx("inline-flex bg-slate-100/80 p-1 rounded-xl", className)}>
+    <div className={clsx("inline-flex flex-wrap gap-1 bg-slate-100/80 p-1 rounded-xl", className)}>
       {options.map((opt) => {
         const isActive = value === opt.value;
         return (
@@ -45,7 +45,7 @@ export function SwitchToggle({ checked, onChange, label, className }: SwitchTogg
     <label className={clsx("flex items-center gap-3 cursor-pointer", className)}>
       <div 
         className={clsx(
-          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500",
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500",
           checked ? "bg-indigo-600" : "bg-slate-200"
         )}
       >

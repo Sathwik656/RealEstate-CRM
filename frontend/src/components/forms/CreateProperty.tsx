@@ -207,6 +207,10 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                         { label: 'East', value: 'East' },
                         { label: 'West', value: 'West' },
                         { label: 'South', value: 'South' },
+                        { label: 'North-East', value: 'North-East' },
+                        { label: 'North-West', value: 'North-West' },
+                        { label: 'South-East', value: 'South-East' },
+                        { label: 'South-West', value: 'South-West' },
                       ]}
                       value={field.value || ''}
                       onChange={field.onChange}

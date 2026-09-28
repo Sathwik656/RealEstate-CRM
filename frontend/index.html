@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="icon" type="image/png" href="/app_icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="The Verandah - Premium CRM for real estate professionals" />
   <meta name="theme-color" content="#1a1f2e" />
@@ -21,7 +21,30 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <style>
+      #initial-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #1a1f2e;
+        z-index: 9999;
+      }
+      #initial-loader img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    </style>
+    <div id="initial-loader">
+      <img src="/loading_screen.png" alt="Loading The Verandah..." />
+    </div>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
