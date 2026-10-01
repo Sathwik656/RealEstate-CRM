@@ -9,10 +9,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { GridSkeleton } from '@/components/ui/GridSkeleton';
 import { AgentCard } from '@/components/views/cards/AgentCard';
 
+import { Check, X } from 'lucide-react';
+
 export default function AgentsPage() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'list'|'grid'>((localStorage.getItem('crm_agentsView') as 'list'|'grid') || 'grid');
+  const [activeTab, setActiveTab] = useState<'active'|'pending'>('active');
 
   const handleViewChange = (v: 'list'|'grid') => {
     setView(v);
@@ -36,8 +39,25 @@ export default function AgentsPage() {
     catch { alert('Failed to delete agent'); }
   };
 
+  const handleApprove = async (id: string) => {
+    try {
+      await api.put(`/users/agents/${id}/approve`);
+      refetch();
+    } catch { alert('Failed to approve agent'); }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await api.put(`/users/agents/${id}/reject`);
+      refetch();
+    } catch { alert('Failed to reject agent'); }
+  };
+
   const agentsList = data?.data || [];
-  const filteredAgents = agentsList.filter((agent: any) => {
+  const activeAgents = agentsList.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+  const pendingAgents = agentsList.filter((a: any) => a.approvalStatus === 'pending');
+
+  const getFiltered = (list: any[]) => list.filter((agent: any) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -47,6 +67,10 @@ export default function AgentsPage() {
       agent.phone?.toLowerCase().includes(q)
     );
   });
+
+  const filteredActiveAgents = getFiltered(activeAgents);
+  const filteredPendingAgents = getFiltered(pendingAgents);
+  const currentList = activeTab === 'active' ? filteredActiveAgents : filteredPendingAgents;
 
   const getInitials = (name?: string) => {
     if (!name) return 'AG';
@@ -79,28 +103,61 @@ export default function AgentsPage() {
       
       
       <div className="card">
-        <div className="card-header bg-surface-alt flex items-center justify-between">
-          <span className="text-sm text-muted whitespace-nowrap">
-            {data?.data?.length ?? 0} agents
-          </span>
-          <ViewToggle view={view} onChange={handleViewChange} />
+        <div className="card-header bg-surface-alt flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted whitespace-nowrap">
+              {currentList.length} agent{currentList.length === 1 ? '' : 's'}
+            </span>
+            <ViewToggle view={view} onChange={handleViewChange} />
+          </div>
+          
+          <div className="flex gap-4 border-b border-border">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`pb-3 text-sm font-semibold transition-colors border-b-2 ${
+                activeTab === 'active' 
+                  ? 'border-primary text-primary' 
+                  : 'border-transparent text-muted hover:text-foreground'
+              }`}
+            >
+              Active Agents
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'pending' 
+                  ? 'border-primary text-primary' 
+                  : 'border-transparent text-muted hover:text-foreground'
+              }`}
+            >
+              Pending Approvals
+              {pendingAgents.length > 0 && (
+                <span className="bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-[10px]">
+                  {pendingAgents.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         
         {view === 'grid' ? (
           <div className="p-4 sm:p-6 bg-surface">
             {isLoading ? (
               <GridSkeleton count={6} />
-            ) : !data?.data?.length ? (
-              <EmptyState title="No agents found" description="There are no agents in the system." />
+            ) : !currentList.length ? (
+              <EmptyState title={`No ${activeTab} agents found`} description="There are no agents matching your criteria." />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {data.data.map((agent: any) => (
+                {currentList.map((agent: any) => (
                   <AgentCard 
                     key={agent._id} 
                     agent={agent} 
                     onView={() => {}} 
                     onEdit={() => setEditingItem(agent)} 
                     onDelete={() => handleDelete(agent._id)} 
+                    isPending={activeTab === 'pending'}
+                    onApprove={activeTab === 'pending' ? () => handleApprove(agent._id) : undefined}
+                    onReject={activeTab === 'pending' ? () => handleReject(agent._id) : undefined}
                   />
                 ))}
               </div>
@@ -121,9 +178,9 @@ export default function AgentsPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={5} className="py-12 text-center text-muted">Loading agents...</td></tr>
-                ) : !data?.data?.length ? (
+                ) : !currentList.length ? (
                   <tr><td colSpan={5} className="py-12 text-center text-muted">No agents found.</td></tr>
-                ) : data.data.map((agent: any) => (
+                ) : currentList.map((agent: any) => (
                   <tr key={agent._id}>
                     <td>
                       <div className="flex items-center gap-3">
@@ -148,6 +205,24 @@ export default function AgentsPage() {
                     <td className="font-medium text-[#c4a47c]">₹{(agent.revenue || 0).toLocaleString('en-IN')}</td>
                     <td className="text-right">
                       <div className="flex justify-end gap-1">
+                        {activeTab === 'pending' ? (
+                          <>
+                            <button 
+                              onClick={() => handleApprove(agent._id)} 
+                              className="btn-icon hover:text-emerald-600 hover:bg-emerald-50 text-emerald-500"
+                              title="Approve"
+                            >
+                              <Check size={15} />
+                            </button>
+                            <button 
+                              onClick={() => handleReject(agent._id)} 
+                              className="btn-icon hover:text-red-600 hover:bg-red-50 text-red-500"
+                              title="Reject"
+                            >
+                              <X size={15} />
+                            </button>
+                          </>
+                        ) : null}
                         <Link 
                           to={`/agents/${agent._id}`}
                           className="btn-icon hover:text-accent hover:bg-accent/10"
@@ -186,8 +261,36 @@ export default function AgentsPage() {
         <div className="flex items-center justify-between gap-4 mb-3">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agents</h1>
           <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-            {filteredAgents.length} Agent{filteredAgents.length === 1 ? '' : 's'}
+            {currentList.length} Agent{currentList.length === 1 ? '' : 's'}
           </span>
+        </div>
+
+        <div className="flex gap-4 border-b border-slate-200 mb-4">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`pb-2 text-sm font-semibold transition-colors border-b-2 ${
+              activeTab === 'active' 
+                ? 'border-[#B5923E] text-[#B5923E]' 
+                : 'border-transparent text-slate-500'
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`pb-2 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
+              activeTab === 'pending' 
+                ? 'border-[#B5923E] text-[#B5923E]' 
+                : 'border-transparent text-slate-500'
+            }`}
+          >
+            Pending
+            {pendingAgents.length > 0 && (
+              <span className="bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-[10px]">
+                {pendingAgents.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Search Input */}
@@ -210,18 +313,18 @@ export default function AgentsPage() {
             <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
             <span>Loading agents...</span>
           </div>
-        ) : filteredAgents.length === 0 ? (
+        ) : currentList.length === 0 ? (
           <div className="py-14 px-4 bg-white rounded-2xl border border-slate-100 text-center flex flex-col items-center">
             <UserCog size={32} className="text-slate-300 mb-2" />
             <p className="text-sm font-bold text-slate-800">
-              {searchQuery ? 'No matching agents' : 'No agents found'}
+              {searchQuery ? `No matching ${activeTab} agents` : `No ${activeTab} agents found`}
             </p>
             <p className="text-xs text-slate-500 mt-1">
               {searchQuery ? 'Try adjusting your search terms.' : 'There are no agents in the system.'}
             </p>
           </div>
         ) : (
-          filteredAgents.map((agent: any) => (
+          currentList.map((agent: any) => (
             <div 
               key={agent._id} 
               className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-3 transition-all"
@@ -240,6 +343,24 @@ export default function AgentsPage() {
 
                 {/* Edit & Delete Action Buttons */}
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  {activeTab === 'pending' ? (
+                    <>
+                      <button
+                        onClick={() => handleApprove(agent._id)}
+                        className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 active:scale-95 transition-all"
+                        title="Approve"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleReject(agent._id)}
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+                        title="Reject"
+                      >
+                        <X size={16} />
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     onClick={() => setEditingItem(agent)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"

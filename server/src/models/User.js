@@ -37,6 +37,11 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved', // Existing users default to approved. Agents explicitely set to pending on signup.
+    },
   },
   {
     timestamps: true,

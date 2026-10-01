@@ -32,6 +32,13 @@ const auth = async (req, res, next) => {
       });
     }
 
+    if (user.role === 'agent' && user.approvalStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Account is not approved.',
+      });
+    }
+
     req.user = user;
     next();
   } catch (err) {

@@ -6,6 +6,10 @@ const Deal = require('../models/Deal');
 const PropertyInterest = require('../models/PropertyInterest');
 const DealAssignment = require('../models/DealAssignment');
 const mongoose = require('mongoose');
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
 // ... (keep existing helper functions)
 const getAgentStatsMap = async (agentIds) => {
@@ -295,4 +299,74 @@ module.exports = {
   updateAgent,
   deleteAgent,
   getAgentDashboard,
+};
+
+const approveAgent = async (req, res, next) => {
+  try {
+    const agent = await User.findOne({ _id: req.params.id, role: 'agent' });
+    if (!agent) return res.status(404).json({ success: false, message: 'Agent not found.' });
+
+    agent.approvalStatus = 'approved';
+    await agent.save();
+
+    try {
+      await resend.emails.send({
+        from: `Veranda Realty <${RESEND_FROM_EMAIL}>`,
+        to: agent.email,
+        subject: 'Your Veranda Realty Agent Account Has Been Approved',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Account Approved</h2>
+            <p>Your account has been approved by the administrator. You can now log in to your Verandah Reality account.</p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send approval email:', emailErr);
+    }
+
+    return res.status(200).json({ success: true, message: 'Agent approved successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const rejectAgent = async (req, res, next) => {
+  try {
+    const agent = await User.findOne({ _id: req.params.id, role: 'agent' });
+    if (!agent) return res.status(404).json({ success: false, message: 'Agent not found.' });
+
+    agent.approvalStatus = 'rejected';
+    await agent.save();
+
+    try {
+      await resend.emails.send({
+        from: `Veranda Realty <${RESEND_FROM_EMAIL}>`,
+        to: agent.email,
+        subject: 'Update Regarding Your Veranda Realty Agent Account',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Account Update</h2>
+            <p>Your agent account has not been approved at this time. Please contact the administrator for further assistance.</p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send rejection email:', emailErr);
+    }
+
+    return res.status(200).json({ success: true, message: 'Agent rejected successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getAllAgents,
+  getAgentById,
+  updateAgent,
+  deleteAgent,
+  getAgentDashboard,
+  approveAgent,
+  rejectAgent,
 };

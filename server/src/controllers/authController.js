@@ -92,9 +92,18 @@ const register = async (req, res, next) => {
     if (userData.role === 'agent') {
       const code = await generateEntityCode('Agent');
       userData.code = code;
+      userData.approvalStatus = 'pending';
     }
 
     const user = await User.create(userData);
+
+    if (user.role === 'agent') {
+      return res.status(201).json({
+        success: true,
+        message: 'Your account has been created and is waiting for admin approval.',
+      });
+    }
+
     const token = signToken(user._id);
 
     return res.status(201).json({
@@ -132,6 +141,15 @@ const login = async (req, res, next) => {
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    if (user.role === 'agent') {
+      if (user.approvalStatus === 'pending') {
+        return res.status(403).json({ success: false, message: 'Your account is waiting for admin approval. You will be notified by email once your account is approved.' });
+      }
+      if (user.approvalStatus === 'rejected') {
+        return res.status(403).json({ success: false, message: 'Your account has been rejected. Please contact the administrator for further assistance.' });
+      }
     }
 
     // Credentials valid -> Invalidate old OTPs for this user

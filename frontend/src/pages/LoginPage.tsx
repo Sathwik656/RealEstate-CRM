@@ -142,7 +142,7 @@ export default function LoginPage() {
           role: 'agent',
         });
         if (response.data.success) {
-          setSuccessMsg('Registration successful! You can now sign in.');
+          setSuccessMsg(response.data.message || 'Registration successful! You can now sign in.');
           setIsLogin(true);
           reset({ ...data, password: '' });
         }

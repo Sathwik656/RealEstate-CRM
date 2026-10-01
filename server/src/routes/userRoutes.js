@@ -7,6 +7,8 @@ const {
   updateAgent,
   deleteAgent,
   getAgentDashboard,
+  approveAgent,
+  rejectAgent,
 } = require('../controllers/userController');
 const { auth, authorizeRoles } = require('../middleware/auth');
 
@@ -19,6 +21,8 @@ router.get('/agents', getAllAgents);
 router.get('/agents/:id/dashboard', getAgentDashboard);
 router.get('/agents/:id', getAgentById);
 router.put('/agents/:id', updateAgent);
+router.put('/agents/:id/approve', approveAgent);
+router.put('/agents/:id/reject', rejectAgent);
 router.delete('/agents/:id', deleteAgent);
 
 module.exports = router;
