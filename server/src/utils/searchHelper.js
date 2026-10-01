@@ -49,6 +49,7 @@ const SEARCH_FIELDS = {
     'sellerName',
     'contactNumber',
     'address',
+    'code',
   ],
 
   /**
@@ -57,6 +58,7 @@ const SEARCH_FIELDS = {
    */
   buyer: [
     'buyerName',
+    'code',
     'contactNumber',
     'preferredLocation',
     'address',
@@ -95,8 +97,9 @@ const FUSE_KEYS = {
    * Seller — name and phone are equally important identifiers.
    */
   seller: [
-    { name: 'sellerName', weight: 0.50 },
-    { name: 'contactNumber', weight: 0.30 },
+    { name: 'sellerName', weight: 0.40 },
+    { name: 'contactNumber', weight: 0.20 },
+    { name: 'code', weight: 0.20 },
     { name: 'address', weight: 0.15 },
     { name: 'note', weight: 0.05 },
   ],
@@ -105,13 +108,14 @@ const FUSE_KEYS = {
    * Buyer — name > phone > location > address/notes.
    */
   buyer: [
-    { name: 'buyerName', weight: 0.40 },
-    { name: 'contactNumber', weight: 0.25 },
-    { name: 'preferredLocation', weight: 0.15 },
+    { name: 'buyerName', weight: 0.35 },
+    { name: 'code', weight: 0.20 },
+    { name: 'contactNumber', weight: 0.20 },
+    { name: 'preferredLocation', weight: 0.10 },
     { name: 'address', weight: 0.08 },
-    { name: 'landmarkPreference', weight: 0.05 },
-    { name: 'remarks', weight: 0.03 },
-    { name: 'note', weight: 0.02 },
+    { name: 'landmarkPreference', weight: 0.03 },
+    { name: 'remarks', weight: 0.02 },
+    { name: 'note', weight: 0.01 },
     { name: '_bhkStr', weight: 0.01 }, // low weight keeps BHK searchable without dominating the score
   ],
 };
