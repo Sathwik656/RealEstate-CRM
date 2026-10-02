@@ -20,6 +20,8 @@ import DealsPage from '@/pages/DealsPage';
 import DealApprovalsPage from '@/pages/DealApprovalsPage';
 import ReportsPage from '@/pages/ReportsPage';
 import AllotmentsPage from '@/pages/AllotmentsPage';
+import MyPropertiesPage from '@/pages/MyPropertiesPage';
+import PropertyApprovalsPage from '@/pages/PropertyApprovalsPage';
 
 function App() {
   const [queryClient] = useState(
@@ -61,6 +63,7 @@ function App() {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="properties" element={<PropertiesPage />} />
               <Route path="properties/:propertyCode" element={<PropertyViewPage />} />
+              <Route path="my-properties" element={<ProtectedRoute><MyPropertiesPage /></ProtectedRoute>} />
               <Route path="sellers" element={<ProtectedRoute><SellersPage /></ProtectedRoute>} />
               <Route path="buyers" element={<ProtectedRoute><BuyersPage /></ProtectedRoute>} />
               <Route path="agents" element={<ProtectedRoute requireAdmin><AgentsPage /></ProtectedRoute>} />
@@ -70,6 +73,7 @@ function App() {
               <Route path="deals" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
               <Route path="allotments" element={<ProtectedRoute requireAdmin><AllotmentsPage /></ProtectedRoute>} />
               <Route path="deal-approvals" element={<ProtectedRoute requireAdmin><DealApprovalsPage /></ProtectedRoute>} />
+              <Route path="property-approvals" element={<ProtectedRoute requireAdmin><PropertyApprovalsPage /></ProtectedRoute>} />
               <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             </Route>
 

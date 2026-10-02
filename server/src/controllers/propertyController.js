@@ -33,8 +33,8 @@ const propertyValidation = [
 // ─── Controllers ──────────────────────────────────────────────────────────────
 
 /**
- * GET /api/properties
- * Get all properties with filters and pagination.
+ * Build the base filter for property queries.
+ * Applies all field-level filters (status, type, price, area, etc.)
  */
 const buildPropertyFilter = async (req) => {
   const {
@@ -87,11 +87,23 @@ const buildPropertyFilter = async (req) => {
 /**
  * GET /api/properties
  * Get all properties with filters and pagination.
+ * - Admin: sees all properties (approved + pending)
+ * - Agent: sees only approved properties + their own pending ones
  */
 const getAllProperties = async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const filter = await buildPropertyFilter(req);
+
+    // ── Visibility filter ─────────────────────────────────────────────────────
+    if (req.user.role === 'agent') {
+      // Agents see: all approved properties OR their own pending ones
+      filter.$or = [
+        { approvalStatus: 'approved' },
+        { approvalStatus: 'pending', createdByUserId: req.user._id },
+      ];
+    }
+    // Admins see everything (no extra filter)
 
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Property.countDocuments(filter);
@@ -99,7 +111,8 @@ const getAllProperties = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
-      .populate('referredByAgentId', 'name email')
+      .populate('referredByAgentId', 'name code')
+      .populate('createdByUserId', 'name code role')
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber address note');
 
@@ -134,19 +147,63 @@ const getAllProperties = async (req, res, next) => {
 };
 
 /**
+ * GET /api/properties/my
+ * Get all properties created by the currently logged-in agent (regardless of approvalStatus).
+ * Admin gets all properties.
+ */
+const getMyProperties = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10000 } = req.query;
+    const filter = req.user.role === 'admin'
+      ? {}
+      : { createdByUserId: req.user._id };
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Property.countDocuments(filter);
+    const properties = await Property.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .populate('referredByAgentId', 'name code')
+      .populate('createdByUserId', 'name code role')
+      .populate('location')
+      .populate('sellerId', 'sellerName contactNumber');
+
+    return res.status(200).json({
+      success: true,
+      message: 'My properties fetched successfully',
+      data: properties,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/properties/stats
  * Get property counts by status and type.
  */
 const getPropertyStats = async (req, res, next) => {
   try {
+    // Stats only count approved properties for agents
+    const matchFilter = req.user.role === 'agent'
+      ? { $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }] }
+      : {};
+
     const [statusStats, typeStats] = await Promise.all([
       Property.aggregate([
-        { $match: {} },
+        { $match: matchFilter },
         { $group: { _id: '$propertyStatus', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       Property.aggregate([
-        { $match: {} },
+        { $match: matchFilter },
         { $group: { _id: '$propertyType', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
@@ -171,6 +228,7 @@ const getPropertyStats = async (req, res, next) => {
 /**
  * GET /api/properties/:id
  * Get a single property by propertyId or _id.
+ * Agents cannot access pending properties they did not create.
  */
 const getPropertyById = async (req, res, next) => {
   try {
@@ -180,9 +238,19 @@ const getPropertyById = async (req, res, next) => {
     })
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber address note')
-      .populate('referredByAgentId', 'name email');
+      .populate('referredByAgentId', 'name code')
+      .populate('createdByUserId', 'name code role');
 
     if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    // Agents cannot view pending properties created by other agents
+    if (
+      req.user.role === 'agent' &&
+      property.approvalStatus === 'pending' &&
+      property.createdByUserId?.toString() !== req.user._id.toString()
+    ) {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
@@ -199,8 +267,8 @@ const getPropertyById = async (req, res, next) => {
 /**
  * POST /api/properties
  * Create a new property.
- * Admin can set referredByAgentId to indicate which agent referred this property.
- * If sellerId is provided, also creates a SellerProperty junction record.
+ * - Admin: property is immediately approved and all agents are notified.
+ * - Agent: property goes to 'pending' approval; admins are notified to review.
  */
 const createProperty = async (req, res, next) => {
   try {
@@ -214,14 +282,23 @@ const createProperty = async (req, res, next) => {
     const code = await generateEntityCode('Property', locDoc.code);
     propertyData.code = code;
 
-    if (req.user.role === 'admin') {
-      propertyData.createdByUserId = req.user._id;
+    // Always stamp the creator
+    propertyData.createdByUserId = req.user._id;
+
+    if (req.user.role === 'agent') {
+      // Agent-created properties require admin approval
+      propertyData.approvalStatus = 'pending';
+      // Agent is the referring agent for their own property
+      propertyData.referredByAgentId = req.user._id;
+    } else {
+      // Admin-created properties are immediately approved
+      propertyData.approvalStatus = 'approved';
     }
 
     let seller = null;
 
     if (req.body.sellerId) {
-      // Existing seller — verify ownership
+      // Existing seller — verify it exists
       seller = await Seller.findById(req.body.sellerId);
       if (!seller) {
         return res.status(404).json({ success: false, message: 'Seller not found' });
@@ -235,12 +312,17 @@ const createProperty = async (req, res, next) => {
       // Create new seller inline
       const sellerIdGen = generateId('SEL');
       const sellerCode = await generateEntityCode('Seller');
-      seller = await Seller.create({
+      const newSellerData = {
         ...req.body.newSeller,
         sellerId: sellerIdGen,
         code: sellerCode,
         createdByUserId: req.user._id,
-      });
+      };
+      // If agent creates inline seller, auto-own it
+      if (req.user.role === 'agent') {
+        newSellerData.referredByAgentId = req.user._id;
+      }
+      seller = await Seller.create(newSellerData);
       if (!propertyData.contactNumber) {
         propertyData.contactNumber = seller.contactNumber;
       }
@@ -258,18 +340,77 @@ const createProperty = async (req, res, next) => {
       );
     }
 
-    const populatedProperty = await Property.findById(property._id).populate('location');
+    const populatedProperty = await Property.findById(property._id)
+      .populate('location')
+      .populate('createdByUserId', 'name code role');
 
-    // Send push notifications to eligible agents (fire-and-forget)
-    const { notifyAllEligibleAgents } = require('../services/pushNotificationService');
-    notifyAllEligibleAgents(populatedProperty, req.user._id).catch(err => {
-      console.error('Push notification error:', err);
-    });
+    const { notifyAllEligibleAgents, notifyAdminsPendingProperty } = require('../services/pushNotificationService');
+
+    if (req.user.role === 'agent') {
+      // Notify admins that a property is awaiting their review (fire-and-forget)
+      notifyAdminsPendingProperty(populatedProperty, req.user).catch(err => {
+        console.error('Push notification error (pending property):', err);
+      });
+    } else {
+      // Notify all eligible agents of the new approved property (existing behaviour)
+      notifyAllEligibleAgents(populatedProperty, req.user._id).catch(err => {
+        console.error('Push notification error:', err);
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Property created successfully',
+      message: req.user.role === 'agent'
+        ? 'Property submitted for approval. Admin will review it shortly.'
+        : 'Property created successfully',
       data: populatedProperty,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * PATCH /api/properties/:id/approve
+ * Admin-only: approve a pending property.
+ * After approval the property becomes visible to all agents and notifications are sent.
+ */
+const approveProperty = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can approve properties' });
+    }
+
+    const property = await Property.findByIdAndUpdate(
+      req.params.id,
+      { approvalStatus: 'approved' },
+      { new: true }
+    )
+      .populate('location')
+      .populate('createdByUserId', 'name code role _id');
+
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    const { notifyAllEligibleAgents, notifyAgentPropertyApproved } = require('../services/pushNotificationService');
+
+    // Notify all agents about the newly available property
+    notifyAllEligibleAgents(property, req.user._id).catch(err => {
+      console.error('Push notification error (property approved):', err);
+    });
+
+    // Notify the creating agent specifically that their submission was approved
+    if (property.createdByUserId && property.createdByUserId.role === 'agent') {
+      notifyAgentPropertyApproved(property, property.createdByUserId._id).catch(err => {
+        console.error('Push notification error (agent approved):', err);
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Property approved successfully',
+      data: property,
     });
   } catch (err) {
     next(err);
@@ -279,15 +420,26 @@ const createProperty = async (req, res, next) => {
 /**
  * PUT /api/properties/:id
  * Update a property.
+ * Agents can update properties they created (by createdByUserId) or are referred agent of.
  */
 const updateProperty = async (req, res, next) => {
   try {
     // Prevent overriding the auto-generated propertyId
     delete req.body.propertyId;
+    // Agents cannot change approvalStatus via this endpoint
+    if (req.user.role === 'agent') {
+      delete req.body.approvalStatus;
+    }
 
     const filter = req.user.role === 'admin'
       ? { _id: req.params.id }
-      : { _id: req.params.id, referredByAgentId: req.user._id };
+      : {
+          _id: req.params.id,
+          $or: [
+            { referredByAgentId: req.user._id },
+            { createdByUserId: req.user._id },
+          ],
+        };
 
     const oldProperty = await Property.findOne(filter);
     if (!oldProperty) {
@@ -305,8 +457,8 @@ const updateProperty = async (req, res, next) => {
     const updatedProperty = await Property.findByIdAndUpdate(
       oldProperty._id,
       { $set: req.body },
-      { new: true, runValidators: true }
-    ).populate('referredByAgentId', 'name email').populate('location');
+      { new: true }
+    ).populate('referredByAgentId', 'name code').populate('location');
 
     return res.status(200).json({
       success: true,
@@ -321,12 +473,19 @@ const updateProperty = async (req, res, next) => {
 /**
  * DELETE /api/properties/:id
  * Delete a property and its SellerProperty junction records.
+ * Agents can only delete properties they created (pending ones).
  */
 const deleteProperty = async (req, res, next) => {
   try {
     const filter = req.user.role === 'admin'
       ? { _id: req.params.id }
-      : { _id: req.params.id, referredByAgentId: req.user._id };
+      : {
+          _id: req.params.id,
+          $or: [
+            { referredByAgentId: req.user._id },
+            { createdByUserId: req.user._id },
+          ],
+        };
 
     const property = await Property.findOneAndDelete(filter);
 
@@ -365,7 +524,13 @@ const updatePropertyStatus = async (req, res, next) => {
 
     const filter = req.user.role === 'admin'
       ? { _id: req.params.id }
-      : { _id: req.params.id, referredByAgentId: req.user._id };
+      : {
+          _id: req.params.id,
+          $or: [
+            { referredByAgentId: req.user._id },
+            { createdByUserId: req.user._id },
+          ],
+        };
 
     const property = await Property.findOneAndUpdate(
       filter,
@@ -390,9 +555,18 @@ const updatePropertyStatus = async (req, res, next) => {
 const exportProperties = async (req, res, next) => {
   try {
     const filter = await buildPropertyFilter(req);
+
+    // Apply visibility filter for export too
+    if (req.user.role === 'agent') {
+      filter.$or = [
+        { approvalStatus: 'approved' },
+        { approvalStatus: 'pending', createdByUserId: req.user._id },
+      ];
+    }
+
     const properties = await Property.find(filter)
       .sort({ createdAt: -1 })
-      .populate('referredByAgentId', 'name email')
+      .populate('referredByAgentId', 'name code')
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber');
 
@@ -405,6 +579,7 @@ const exportProperties = async (req, res, next) => {
       { header: 'Type', key: 'propertyType', width: 15 },
       { header: 'Purpose', key: 'purpose', width: 10 },
       { header: 'Status', key: 'propertyStatus', width: 15 },
+      { header: 'Approval', key: 'approvalStatus', width: 12 },
       { header: 'Location', key: 'locationName', width: 20 },
       { header: 'Location Code', key: 'locationCode', width: 15 },
       { header: 'Address', key: 'address', width: 40 },
@@ -425,6 +600,7 @@ const exportProperties = async (req, res, next) => {
         propertyType: p.propertyType || '',
         purpose: p.purpose || '',
         propertyStatus: p.propertyStatus || '',
+        approvalStatus: p.approvalStatus || 'approved',
         locationName: p.location ? p.location.location : '',
         locationCode: p.location ? p.location.code : '',
         address: p.address || '',
@@ -460,7 +636,7 @@ const getPropertyInterests = async (req, res, next) => {
   try {
     const PropertyInterest = require('../models/PropertyInterest');
     const interests = await PropertyInterest.find({ propertyId: req.params.id })
-      .populate('agentId', 'name email code phone')
+      .populate('agentId', 'name code phone')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -474,6 +650,7 @@ const getPropertyInterests = async (req, res, next) => {
 
 module.exports = {
   getAllProperties,
+  getMyProperties,
   exportProperties,
   getPropertyStats,
   getPropertyById,
@@ -481,6 +658,7 @@ module.exports = {
   updateProperty,
   deleteProperty,
   updatePropertyStatus,
+  approveProperty,
   propertyValidation,
   getPropertyInterests,
 };

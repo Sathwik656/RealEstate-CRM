@@ -106,6 +106,12 @@ const createBuyer = async (req, res, next) => {
       createdByUserId: req.user._id,
     };
 
+    // Auto-assign ownership when agent creates a buyer so the record
+    // remains private to that agent (backend visibility filter uses referredByAgentId)
+    if (req.user.role === 'agent') {
+      finalBuyerData.referredByAgentId = req.user._id;
+    }
+
     const buyer = await Buyer.create(finalBuyerData);
 
     return res.status(201).json({

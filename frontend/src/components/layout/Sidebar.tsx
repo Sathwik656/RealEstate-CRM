@@ -10,6 +10,8 @@ import {
   Handshake,
   ClipboardCheck,
   FileText,
+  Home,
+  ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -27,6 +29,7 @@ const navGroups = [
     title: 'CRM',
     items: [
       { name: 'Properties', to: '/properties', icon: Building2 },
+      { name: 'My Properties', to: '/my-properties', icon: Home, requireAgent: true },
       { name: 'Sellers', to: '/sellers', icon: Users },
       { name: 'Buyers', to: '/buyers', icon: UserSquare2 },
     ],
@@ -36,6 +39,7 @@ const navGroups = [
     items: [
       { name: 'My Deals', to: '/deals', icon: Handshake, requireAgent: true },
       { name: 'Allotment Requests', to: '/allotments', icon: Users, requireAdmin: true },
+      { name: 'Property Approvals', to: '/property-approvals', icon: ShieldCheck, requireAdmin: true },
       { name: 'Deal Approvals', to: '/deal-approvals', icon: ClipboardCheck, requireAdmin: true },
     ],
   },

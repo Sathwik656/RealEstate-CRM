@@ -94,17 +94,6 @@ const propertySchema = new mongoose.Schema(
       enum: [1, 2, 3, 4, 5, null],
       default: null,
       index: true,
-      validate: {
-        validator: function (value) {
-          if (value === null || value === undefined) return true;
-          // In findOneAndUpdate, 'this' refers to the query
-          const type = this.propertyType || (this.getUpdate && this.getUpdate().$set && this.getUpdate().$set.propertyType) || (this.getUpdate && this.getUpdate().propertyType);
-          // If type is not available in the payload during update, we can't strictly validate, but for save it works
-          if (!type) return true;
-          return ['Independent House', 'Flat'].includes(type);
-        },
-        message: 'BHK can only be assigned to Independent House and Flat'
-      }
     },
     mainDoorDirection: {
       type: String,
@@ -125,6 +114,12 @@ const propertySchema = new mongoose.Schema(
     yearOfConstruction: {
       type: Date,
       default: null,
+    },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved'],
+      default: 'approved', // Existing admin-created properties stay 'approved'
+      index: true,
     },
   },
   {

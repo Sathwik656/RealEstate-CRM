@@ -19,14 +19,20 @@ export function PropertyCard({
       onClick={onView}
     >
       <div className="flex justify-between items-start mb-3">
-        <span className={clsx('badge text-[10px]',
-          p.propertyStatus === 'Available' ? 'badge-green' :
-          p.propertyStatus === 'In Allotment' ? 'badge-blue' :
-          p.propertyStatus === 'In Deal' ? 'badge-amber' :
-          p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
-        )}>
-          {p.propertyStatus}
-        </span>
+        <div>
+          {p.approvalStatus === 'pending' ? (
+            <span className="badge badge-amber text-[10px]">⏳ Pending Approval</span>
+          ) : (
+            <span className={clsx('badge text-[10px]',
+              p.propertyStatus === 'Available' ? 'badge-green' :
+              p.propertyStatus === 'In Allotment' ? 'badge-blue' :
+              p.propertyStatus === 'In Deal' ? 'badge-amber' :
+              p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
+            )}>
+              {p.propertyStatus}
+            </span>
+          )}
+        </div>
         <div className="text-[10px] text-muted font-mono">{p.code}</div>
       </div>
       
@@ -83,7 +89,7 @@ export function PropertyCard({
           </button>
         )}
         
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
           <>
             <button
               className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"

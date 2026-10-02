@@ -1,10 +1,12 @@
 import {
   ArrowLeft, Edit, Home, MapPin, IndianRupee, Maximize2,
   BedDouble, Car, Compass, Calendar, Phone, Tag,
-  Building2, User, AlertCircle, CheckCircle, Handshake,
+  Building2, User, AlertCircle, CheckCircle, Handshake, ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 interface Props {
   property: any;
@@ -45,6 +47,17 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
 
 function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId }: Props) {
   const { user } = useAuth();
+  const qc = useQueryClient();
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.patch(`/properties/${p._id}/approve`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['properties'] });
+      alert('Property approved! It is now visible to all agents.');
+    },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve property'),
+  });
+
   const statusBadge = clsx('badge',
     p.propertyStatus === 'Available' ? 'badge-green' :
     p.propertyStatus === 'In Allotment' ? 'badge-blue' :
@@ -73,14 +86,27 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
             <h1 className="page-title">{p.propertyTitle}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="font-mono text-xs text-muted">{p.code}</span>
-              <span className={statusBadge}>{p.propertyStatus}</span>
+              {p.approvalStatus === 'pending' ? (
+                <span className="badge badge-amber">⏳ Pending Approval</span>
+              ) : (
+                <span className={statusBadge}>{p.propertyStatus}</span>
+              )}
               {p.purpose && <span className="badge badge-blue">{p.purpose}</span>}
               {p.propertyType && <span className="badge badge-amber">{p.propertyType}</span>}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {user?.role === 'admin' && (
+          {user?.role === 'admin' && p.approvalStatus === 'pending' && (
+            <button
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+              className="btn-accent btn-sm flex items-center gap-1.5 flex-shrink-0"
+            >
+              <ShieldCheck size={14} /> {approveMutation.isPending ? 'Approving...' : 'Approve'}
+            </button>
+          )}
+          {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
             <button onClick={onEdit} className="btn-outline btn-sm flex items-center gap-1.5 flex-shrink-0">
               <Edit size={14} /> Edit
             </button>
@@ -167,7 +193,17 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
 
 function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId }: Props) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const formatMonth = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : undefined;
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.patch(`/properties/${p._id}/approve`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['properties'] });
+      alert('Property approved!');
+    },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve property'),
+  });
 
   let badgeColor = 'bg-slate-100 text-slate-600';
   if (p.propertyStatus === 'Available') badgeColor = 'bg-[#E7F7ED] text-[#137A3B]';
@@ -182,11 +218,22 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
           <button onClick={onBack} className="p-2 -ml-2 rounded-full text-slate-500">
             <ArrowLeft size={20} />
           </button>
-          {user?.role === 'admin' && (
-            <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full">
-              Edit
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {user?.role === 'admin' && p.approvalStatus === 'pending' && (
+              <button
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending}
+                className="text-sm font-semibold text-white py-1.5 px-3 bg-accent rounded-full flex items-center gap-1"
+              >
+                <ShieldCheck size={14} /> Approve
+              </button>
+            )}
+            {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
+              <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full">
+                Edit
+              </button>
+            )}
+          </div>
         </div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{p.propertyTitle}</h1>
         <p className="text-xs text-slate-500 font-mono mt-0.5">{p.code}</p>

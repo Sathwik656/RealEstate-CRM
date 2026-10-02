@@ -181,11 +181,9 @@ export default function PropertiesPage() {
           <h1 className="page-title">Properties</h1>
           <p className="page-subtitle">Manage your real estate listings</p>
         </div>
-        {user?.role === 'admin' && (
-          <button className="btn-accent" onClick={() => setIsCreating(true)}>
-            <Plus size={16} />
-          </button>
-        )}
+        <button className="btn-accent" onClick={() => setIsCreating(true)}>
+          <Plus size={16} />
+        </button>
       </div>
 
       <div className="card">
@@ -222,6 +220,7 @@ export default function PropertiesPage() {
                 <option value="Available">Available</option>
                 <option value="In Deal">In Deal</option>
                 <option value="Sold">Sold</option>
+                {user?.role === 'admin' && <option value="pending">Pending Approval</option>}
               </select>
               
               <button
@@ -386,14 +385,18 @@ export default function PropertiesPage() {
                     )}
                   </td>
                   <td>
-                    <span className={clsx('badge',
-                      p.propertyStatus === 'Available' ? 'badge-green' :
-                        p.propertyStatus === 'In Allotment' ? 'badge-blue' :
-                          p.propertyStatus === 'In Deal' ? 'badge-amber' :
-                            p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
-                    )}>
-                      {p.propertyStatus}
-                    </span>
+                    {p.approvalStatus === 'pending' ? (
+                      <span className="badge badge-amber text-[10px]">⏳ Pending Approval</span>
+                    ) : (
+                      <span className={clsx('badge',
+                        p.propertyStatus === 'Available' ? 'badge-green' :
+                          p.propertyStatus === 'In Allotment' ? 'badge-blue' :
+                            p.propertyStatus === 'In Deal' ? 'badge-amber' :
+                              p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
+                      )}>
+                        {p.propertyStatus}
+                      </span>
+                    )}
                   </td>
                   <td className="text-right">
                     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -416,8 +419,8 @@ export default function PropertiesPage() {
                           {p.isApplied ? 'Applied' : 'Interested'}
                         </button>
                       )}
-                      {/* Edit & Delete — admin only */}
-                      {user?.role === 'admin' && (
+                      {/* Edit & Delete — admin or property creator */}
+                      {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
                         <>
                           <button
                             className="btn-icon hover:text-blue-600 hover:bg-blue-50"

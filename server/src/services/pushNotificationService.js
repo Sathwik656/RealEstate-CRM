@@ -285,6 +285,64 @@ const notifyAgentUnassigned = async (property, oldAgentId) => {
   }
 };
 
+/**
+ * Notify all admins that an agent has submitted a property for approval.
+ */
+const notifyAdminsPendingProperty = async (property, agent) => {
+  try {
+    const admins = await User.find({ role: 'admin' }).select('_id notificationsEnabled');
+    if (!admins.length) return;
+
+    const agentName = agent?.name || 'An agent';
+    const propertyLabel = property?.propertyTitle
+      ? `${property.propertyTitle} (${property.code || ''})`
+      : 'a property';
+
+    const payload = {
+      title: 'Property Awaiting Approval',
+      body: `${agentName} has submitted ${propertyLabel} for approval. Please review it.`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: '/properties?filter=pending' },
+    };
+
+    await saveToDb(admins.map(a => a._id), payload, 'PROPERTY_PENDING_APPROVAL');
+    const pushAdmins = admins.filter(a => a.notificationsEnabled);
+    await Promise.allSettled(pushAdmins.map(a => sendNotificationToUser(a._id, payload)));
+  } catch (err) {
+    console.error('notifyAdminsPendingProperty error:', err);
+  }
+};
+
+/**
+ * Notify the creating agent that their submitted property has been approved by an admin.
+ */
+const notifyAgentPropertyApproved = async (property, agentId) => {
+  try {
+    const agent = await User.findById(agentId).select('_id notificationsEnabled');
+    if (!agent) return;
+
+    const propertyLabel = property?.propertyTitle
+      ? `${property.propertyTitle} (${property.code || ''})`
+      : 'Your property';
+
+    const payload = {
+      title: 'Property Approved!',
+      body: `${propertyLabel} has been approved and is now visible to all agents.`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: `/properties/${property.code || property.propertyId}` },
+    };
+
+    await saveToDb([agent._id], payload, 'PROPERTY_APPROVED');
+    if (agent.notificationsEnabled) {
+      await sendNotificationToUser(agent._id, payload);
+    }
+  } catch (err) {
+    console.error('notifyAgentPropertyApproved error:', err);
+  }
+};
+
 module.exports = {
   sendNotificationToUser,
   notifyAllEligibleAgents,
@@ -296,4 +354,6 @@ module.exports = {
   notifyUnassignmentRequested,
   notifyPropertyReassigned,
   notifyAgentUnassigned,
+  notifyAdminsPendingProperty,
+  notifyAgentPropertyApproved,
 };
