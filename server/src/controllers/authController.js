@@ -47,9 +47,9 @@ const signToken = (id) => {
 const sendOtpEmail = async (email, otp) => {
   try {
     await resend.emails.send({
-      from: `Veenu CRM <${RESEND_FROM_EMAIL}>`,
+      from: `Veranda Realty <${RESEND_FROM_EMAIL}>`,
       to: email,
-      subject: 'Your Verandah Login OTP',
+      subject: 'Your Veranda Login Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaec; border-radius: 8px;">
           <h2 style="color: #1a1f2e; margin-top: 0;">Your Verandah Login OTP</h2>

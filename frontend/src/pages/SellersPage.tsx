@@ -58,16 +58,16 @@ export default function SellersPage() {
 
   return (
     <>
-    <div className="hidden lg:block page-wrapper">
+    <div className="page-wrapper">
       <div className="page-header">
         <div><h1 className="page-title">Sellers</h1><p className="page-subtitle">Manage property owners and sellers</p></div>
         <button className="btn-accent" onClick={() => setIsCreating(true)}><Plus size={16} /></button>
       </div>
       <div className="card">
         {/* Search */}
-        <div className="card-header bg-surface-alt flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
+        <div className="card-header bg-surface-alt flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search size={16} className="text-muted" />
               </div>
@@ -79,7 +79,7 @@ export default function SellersPage() {
                 className="form-input pl-10 w-full"
               />
             </div>
-            <span className="text-sm text-muted whitespace-nowrap">
+            <span className="text-sm text-muted whitespace-nowrap flex-1 sm:flex-none">
               {data?.pagination?.total ?? 0} sellers
             </span>
           </div>
@@ -142,52 +142,7 @@ export default function SellersPage() {
     </div>
     
     {/* Mobile UI */}
-    <div className="block lg:hidden w-full pb-6 font-sans">
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Sellers</h1>
-        
-        {/* Search Bar */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-            <Search size={16} className="text-slate-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search sellers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-100 text-sm text-slate-900 rounded-full border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-slate-200/50 transition-all"
-          />
-        </div>
-      </div>
-
-      <div className="px-4 space-y-3">
-        {isLoading ? (
-          <div className="text-center py-10 text-sm text-slate-500">Loading...</div>
-        ) : !data?.data?.length ? (
-          <div className="text-center py-10 text-sm text-slate-500">No sellers found.</div>
-        ) : (
-          data.data.map((s: any) => (
-            <div 
-              key={s._id} 
-              onClick={() => setViewingItem(s)}
-              className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 relative cursor-pointer active:scale-[0.99] transition-transform"
-            >
-              <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold text-lg">
-                {s.sellerName?.charAt(0).toUpperCase() || 'S'}
-              </div>
-              <div className="flex-1 min-w-0 pr-6">
-                <h3 className="text-sm font-bold text-slate-900 truncate">{s.sellerName}</h3>
-                <p className="text-xs text-slate-500 truncate mt-0.5">{s.contactNumber}</p>
-              </div>
-              <div className="absolute right-4 text-slate-300">
-                <ChevronRight size={18} />
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+    
     </>
   );
 }

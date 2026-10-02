@@ -10,58 +10,59 @@ export function AgentCard({ agent, onView, onEdit, onDelete, isPending, onApprov
   };
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-6 relative group h-full flex flex-col cursor-pointer" onClick={handleView}>
+    <div 
+      className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-5 flex flex-col h-full cursor-pointer"
+      onClick={handleView}
+    >
       
       {/* Header: Avatar & Name */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="h-16 w-16 rounded-full overflow-hidden border-[3px] border-[#c4a47c] shrink-0 bg-surface flex items-center justify-center">
-          <img 
-            src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=c4a47c&textColor=ffffff`} 
-            alt={agent.name}
-            className="h-full w-full object-cover"
-          />
+      <div className="flex justify-between items-start mb-4 gap-2">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="h-12 w-12 rounded-full overflow-hidden shrink-0 bg-surface flex items-center justify-center">
+            <img 
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=c4a47c&textColor=ffffff`} 
+              alt={agent.name}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="min-w-0 pt-1">
+            <h3 className="font-semibold text-primary truncate" title={agent.name}>{agent.name}</h3>
+            {agent.code && !isPending && (
+              <div className="text-[10px] text-muted font-mono truncate">{agent.code}</div>
+            )}
+          </div>
         </div>
-        <div>
-          <h3 className="text-xl font-display font-semibold text-primary line-clamp-1" title={agent.name}>{agent.name}</h3>
-          {agent.code && !isPending && (
-            <span className="text-xs text-muted font-mono mt-0.5 block">{agent.code}</span>
-          )}
-        </div>
+        {/* We can optionally add a badge here if required in the future */}
       </div>
 
       {/* Contact Info */}
-      <div className="space-y-2 mb-6 flex-grow">
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <Mail size={14} className="shrink-0" />
-          <span className="truncate" title={agent.email}>{agent.email}</span>
-        </div>
+      <div className="space-y-3 mb-4 flex-grow">
+        {/* Agent Email Hidden */}
         {agent.phone && !isPending && (
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <Phone size={14} className="shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <Phone size={12} className="shrink-0" />
             <span>{agent.phone}</span>
           </div>
         )}
       </div>
 
-      <hr className="border-border/60 mb-4 mt-auto" />
-
       {/* Stats Footer (Hidden if Pending) */}
       {!isPending && (
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-muted uppercase mb-1">Properties Sold</p>
-            <p className="text-xl font-display font-bold text-[#c4a47c]">{agent.propertiesSold || 0}</p>
+        <div className="flex items-center gap-6 mb-4">
+          <div className="flex-1 border-r border-border">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1">Properties Sold</div>
+            <div className="font-display font-semibold text-primary">{agent.propertiesSold || 0}</div>
           </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-muted uppercase mb-1">Revenue</p>
-            <p className="text-xl font-display font-bold text-[#c4a47c]">
+          <div className="flex-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1">Revenue</div>
+            <div className="font-display font-semibold text-primary">
               ₹{(agent.revenue || 0).toLocaleString('en-IN')}
-            </p>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-auto pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
         {isPending ? (
           <>
             {onApprove && (

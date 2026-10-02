@@ -115,7 +115,7 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         {b.referredByAgentId && (
           <Section title="Agent Referral" icon={Tag}>
             <Field label="Referred By (Agent)" value={b.referredByAgentId.name} />
-            <Field label="Agent Email" value={b.referredByAgentId.email} />
+            {/* <Field label="Agent Email" value={...email} /> */}
           </Section>
         )}
 
@@ -242,7 +242,7 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
               </div>
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
                 <span className="text-sm text-slate-500">Email</span>
-                <span className="text-sm font-medium text-slate-900">{b.referredByAgentId.email}</span>
+                {/* <span className="text-sm font-medium text-slate-900">{...email}</span> */}
               </div>
             </div>
           </div>
@@ -275,14 +275,5 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
 }
 
 export function BuyerDetailView(props: Props) {
-  return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopBuyerDetailView {...props} />
-      </div>
-      <div className="block lg:hidden">
-        <MobileBuyerDetailView {...props} />
-      </div>
-    </>
-  );
+  return <DesktopBuyerDetailView {...props} />;
 }

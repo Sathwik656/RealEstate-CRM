@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import {
   Search, SlidersHorizontal, X, Building2, Users, UserSquare2,
   Home, UserCircle, Layers, ChevronRight, MapPin, Phone,
-  IndianRupee, Maximize2, BedDouble, Tag,
+  IndianRupee, Maximize2, BedDouble, Tag, ChevronDown, Check
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -98,6 +98,19 @@ export default function SearchPage() {
   const [mode, setMode] = useState<SearchMode>('global');
   const [inputVal, setInputVal] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
+
+  const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setIsModeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<PropertyFilters>({
     bhk: '', type: '', status: '', purpose: '',
@@ -178,29 +191,12 @@ export default function SearchPage() {
       {/* Page Header */}
 
       {/* Search Card */}
-      <div className="card">
+      <div className="card overflow-visible">
         <div className="card-body space-y-4">
 
-          {/* Mode Tabs */}
-          <div className="flex flex-wrap gap-1.5 p-1 bg-surface-alt rounded-lg w-fit">
-            {MODES.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => handleModeChange(value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all duration-200 ${mode === value
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted hover:text-primary hover:bg-surface'
-                  }`}
-              >
-                <Icon size={13} />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Input Row */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
+          {/* Search Row */}
+          <div className="flex flex-row flex-wrap items-center gap-2 w-full">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={18} />
               <input
                 id="global-search-input"
@@ -212,7 +208,7 @@ export default function SearchPage() {
                     ? 'Type anything — searches names, locations, types...'
                     : `Search ${mode} by name, location, contact...`
                 }
-                className="form-input pl-11 pr-10"
+                className="form-input pl-11 pr-10 w-full"
                 autoComplete="off"
                 autoFocus
               />
@@ -226,12 +222,52 @@ export default function SearchPage() {
               )}
             </div>
 
+            <div className="relative flex-1 sm:flex-none" ref={modeDropdownRef}>
+              <button 
+                type="button"
+                onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
+                className="w-full flex items-center justify-between gap-3 sm:w-[160px] px-4 py-[9px] bg-surface hover:bg-surface-alt border border-border rounded-xl shadow-xs transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-primary">
+                    {MODES.find(m => m.value === mode)?.label || 'All'}
+                  </span>
+                </div>
+                <ChevronDown size={16} className={`text-muted transition-transform duration-200 flex-shrink-0 ${isModeDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isModeDropdownOpen && (
+                <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 w-full sm:w-[160px] bg-surface border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 py-1 max-h-64 overflow-y-auto">
+                  {MODES.map(opt => {
+                    const Icon = opt.icon;
+                    return (
+                      <button 
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          handleModeChange(opt.value as any);
+                          setIsModeDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-surface-alt transition-colors ${mode === opt.value ? 'bg-accent/5 text-accent font-bold' : 'text-primary font-medium'}`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Icon size={14} className={mode === opt.value ? 'text-accent' : 'text-muted'} />
+                          <span className="truncate">{opt.label}</span>
+                        </div>
+                        {mode === opt.value && <Check size={14} className="text-accent flex-shrink-0" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Advanced Filters toggle (properties only) */}
             {mode === 'properties' && (
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`btn-icon border px-3 gap-1.5 flex items-center text-xs font-medium ${showFilters || hasActiveFilters
+                className={`btn-icon border px-3 flex-1 sm:flex-none justify-center gap-1.5 flex items-center text-xs font-medium py-[9px] ${showFilters || hasActiveFilters
                   ? 'bg-accent/10 text-accent border-accent/30'
                   : 'border-border bg-surface hover:bg-surface-alt text-muted'
                   }`}
@@ -504,7 +540,7 @@ function ResultCard({ item, mode, cfg }: { item: any; mode: SearchMode; cfg: any
   if (displayLoc) subLine.push(displayLoc);
   if (item.address) subLine.push(item.address);
   if (item.contactNumber) subLine.push(item.contactNumber);
-  if (item.email) subLine.push(item.email);
+  // if (item.email) subLine.push(item.email); // Hiding agent email
 
   const price = item.price;
   const area = item.area;

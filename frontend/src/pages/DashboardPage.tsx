@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { DesktopDashboard } from './DesktopDashboard';
-import { MobileDashboard } from './MobileDashboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -55,7 +54,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="hidden lg:block">
+      <div >
         <DesktopDashboard 
           statsData={statsData}
           chartsData={chartsData}
@@ -64,14 +63,7 @@ export default function DashboardPage() {
           isAdmin={isAdmin}
         />
       </div>
-      <div className="block lg:hidden">
-        <MobileDashboard 
-          statsData={statsData}
-          recentPropertiesData={recentPropertiesData}
-          isAdmin={isAdmin}
-          user={user}
-        />
-      </div>
+      
     </>
   );
 }

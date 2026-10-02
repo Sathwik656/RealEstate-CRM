@@ -202,9 +202,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-background font-sans">
-      {/* Left Panel - Desktop Only */}
+      {/* Left Panel */}
       <div
-        className="hidden lg:flex w-1/2 flex-col justify-between p-12"
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
         style={{ background: 'linear-gradient(160deg, #1a1f2e 0%, #0d1117 100%)' }}
       >
         <div className="flex flex-col items-start gap-4 mt-8">
@@ -224,10 +224,10 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel - Desktop & Mobile */}
+      {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 overflow-y-auto bg-[#f8fafc] lg:bg-background">
         <div className="w-full max-w-md py-6 sm:py-8">
-          {/* Mobile Header / Branding */}
+          {/* Mobile Branding */}
           <div className="lg:hidden flex flex-col items-center justify-center gap-4 mb-10">
             <img src="/app_icon.webp" alt="Veranda Realty" className="h-20 w-auto object-contain drop-shadow-md" />
             <span className="font-display font-bold text-2xl text-slate-900 tracking-widest uppercase">VERANDA REALTY</span>

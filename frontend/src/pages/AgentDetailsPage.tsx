@@ -115,6 +115,7 @@ export default function AgentDetailsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
 
+  const [activeTab, setActiveTab] = useState<'current' | 'interested' | 'completed' | 'returned' | 'history'>('current');
   const [selectedMonth, setSelectedMonth] = useState<string>(''); 
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [viewingReport, setViewingReport] = useState<any>(null);
@@ -287,7 +288,7 @@ export default function AgentDetailsPage() {
     )}
 
     {/* Desktop View */}
-    <div className="hidden lg:block page-wrapper max-w-6xl">
+    <div className="page-wrapper max-w-6xl">
       <div className="flex items-center gap-4 mb-6">
         <Link to="/agents" className="btn-icon bg-surface border border-border hover:bg-surface-alt">
           <ArrowLeft size={18} />
@@ -314,7 +315,7 @@ export default function AgentDetailsPage() {
                 <h2 className="text-2xl font-display font-bold text-white mb-1">{agent.name}</h2>
                 <div className="flex items-center gap-4 text-white/70 text-sm">
                   <span className="font-mono bg-black/20 px-2 py-0.5 rounded text-accent border border-black/10 shadow-sm">{agent.code || 'NO-CODE'}</span>
-                  <span>{agent.email}</span>
+                  {/* <span>{agent.email}</span> */}
                   {agent.phone && <span>{agent.phone}</span>}
                   <div className="flex items-center gap-1.5 border-l border-white/20 pl-4">
                     <Calendar size={14} />
@@ -325,7 +326,62 @@ export default function AgentDetailsPage() {
             </div>
           </div>
 
+          {/* Tabs */}
+          <div className="flex overflow-x-auto gap-4 border-b border-border hide-scrollbar">
+            <button
+              onClick={() => setActiveTab('current')}
+              className={clsx(
+                "pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap",
+                activeTab === 'current' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'
+              )}
+            >
+              Current Properties
+              <span className="bg-surface-alt border border-border px-1.5 py-0.5 rounded text-xs">{currentProperties.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('interested')}
+              className={clsx(
+                "pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap",
+                activeTab === 'interested' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'
+              )}
+            >
+              Interested Properties
+              <span className="bg-surface-alt border border-border px-1.5 py-0.5 rounded text-xs">{interestedProperties.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={clsx(
+                "pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap",
+                activeTab === 'completed' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'
+              )}
+            >
+              Completed Deals
+              <span className="bg-surface-alt border border-border px-1.5 py-0.5 rounded text-xs">{reports.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('returned')}
+              className={clsx(
+                "pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap",
+                activeTab === 'returned' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'
+              )}
+            >
+              Returned / Reassigned
+              <span className="bg-surface-alt border border-border px-1.5 py-0.5 rounded text-xs">{reassignedProperties.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={clsx(
+                "pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap",
+                activeTab === 'history' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'
+              )}
+            >
+              History Log
+              <span className="bg-surface-alt border border-border px-1.5 py-0.5 rounded text-xs">{assignmentHistory.length}</span>
+            </button>
+          </div>
+
           {/* Current Properties */}
+          {activeTab === 'current' && (
           <div className="card">
             <div className="card-header bg-surface-alt flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -401,8 +457,10 @@ export default function AgentDetailsPage() {
               </table>
             </div>
           </div>
+          )}
 
           {/* Interested Properties — Waiting for Allotment */}
+          {activeTab === 'interested' && (
           <div className="card">
             <div className="card-header bg-surface-alt flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -452,8 +510,10 @@ export default function AgentDetailsPage() {
               </table>
             </div>
           </div>
+          )}
 
           {/* Completed Deals */}
+          {activeTab === 'completed' && (
           <div className="card">
             <div className="card-header bg-surface-alt flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
@@ -517,8 +577,10 @@ export default function AgentDetailsPage() {
               </table>
             </div>
           </div>
+          )}
 
           {/* Returned / Reassigned */}
+          {activeTab === 'returned' && (
           <div className="card">
             <div className="card-header bg-surface-alt flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -577,8 +639,10 @@ export default function AgentDetailsPage() {
               </table>
             </div>
           </div>
+          )}
 
           {/* Full Assignment History */}
+          {activeTab === 'history' && (
           <div className="card">
             <div className="card-header bg-surface-alt flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -660,98 +724,13 @@ export default function AgentDetailsPage() {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </div>
 
     {/* Mobile UI (Compact layout for the exact same sections) */}
-    <div className="block lg:hidden w-full pb-20 font-sans">
-      <div className="px-4 pt-6 pb-4">
-        <Link to="/agents" className="inline-block p-2 -ml-2 rounded-full text-slate-600 hover:bg-slate-100 mb-3 active:scale-95 transition-all">
-          <ArrowLeft size={22} />
-        </Link>
-        
-        {isLoadingDashboard ? (
-          <div className="py-12 text-center text-xs text-slate-400">Loading agent profile...</div>
-        ) : !agent ? (
-          <div className="text-center py-10 text-sm text-red-500 font-medium">Agent not found.</div>
-        ) : (
-          <div className="space-y-4">
-            {/* Agent Info */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#B5923E]/10 flex items-center justify-center text-[#B5923E]">
-                <User size={24} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-lg font-bold text-slate-900 truncate">{agent.name}</h1>
-                <p className="text-[10px] font-mono text-[#B5923E]">{agent.code}</p>
-                <p className="text-xs text-slate-500 truncate">{agent.email}</p>
-              </div>
-            </div>
-
-            {/* Current Properties */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xs font-bold text-slate-400 uppercase">Current Properties</h2>
-                <span className="text-xs font-bold bg-slate-100 px-2 rounded-full">{currentProperties.length}</span>
-              </div>
-              <div className="space-y-3">
-                {currentProperties.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-2">No active properties</p>
-                ) : currentProperties.map((deal: any) => (
-                  <div key={deal._id} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <p className="font-bold text-sm text-slate-900 truncate">{deal.propertyId?.propertyTitle}</p>
-                    <DealStatusBadge status={deal.status} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Waiting Properties */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xs font-bold text-slate-400 uppercase">Interested / Waiting</h2>
-                <span className="text-xs font-bold bg-slate-100 px-2 rounded-full">{interestedProperties.length}</span>
-              </div>
-              <div className="space-y-3">
-                {interestedProperties.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-2">None</p>
-                ) : interestedProperties.map((i: any) => (
-                  <div key={i._id} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <p className="font-bold text-sm text-slate-900 truncate">{i.propertyId?.propertyTitle}</p>
-                    <InterestStatusBadge status={i.status} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Completed */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xs font-bold text-slate-400 uppercase">Completed Deals</h2>
-                <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 rounded-full">{reports.length}</span>
-              </div>
-              <div className="space-y-3">
-                {reports.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-2">None</p>
-                ) : reports.map((r: any) => (
-                  <div key={r._id} onClick={() => setViewingReport(r)} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-sm text-slate-900 truncate">{r.propertyId?.propertyTitle}</p>
-                      <p className="text-xs text-emerald-600 font-bold">{fmt(r.closingPrice)}</p>
-                    </div>
-                    <ArrowRight size={16} className="text-slate-300" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Note: In a real app we'd also show reassigned and history lists for mobile here, 
-                keeping it concise to follow the exact desktop structure. */}
-          </div>
-        )}
-      </div>
-    </div>
+    
     </>
   );
 }

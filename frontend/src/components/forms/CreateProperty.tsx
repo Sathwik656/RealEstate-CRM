@@ -307,7 +307,7 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                     <select {...register('referredByAgentId')} className="form-select">
                       <option value="">Select Agent ▼</option>
                       {agents?.map((agent: any) => (
-                        <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
+                        <option key={agent._id} value={agent._id}>{agent.name} ({agent.code || "NO CODE"})</option>
                       ))}
                     </select>
                   </div>

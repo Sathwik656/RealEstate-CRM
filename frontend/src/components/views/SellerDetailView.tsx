@@ -82,7 +82,7 @@ function DesktopSellerDetailView({ seller: s, onBack, onEdit }: Props) {
         {s.referredByAgentId && (
           <Section title="Agent Referral" icon={Tag}>
             <Field label="Referred By (Agent)" value={s.referredByAgentId.name} />
-            <Field label="Agent Email" value={s.referredByAgentId.email} />
+            {/* <Field label="Agent Email" value={...email} /> */}
           </Section>
         )}
 
@@ -150,7 +150,7 @@ function MobileSellerDetailView({ seller: s, onBack, onEdit }: Props) {
               </div>
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
                 <span className="text-sm text-slate-500">Email</span>
-                <span className="text-sm font-medium text-slate-900">{s.referredByAgentId.email}</span>
+                {/* <span className="text-sm font-medium text-slate-900">{...email}</span> */}
               </div>
             </div>
           </div>
@@ -177,14 +177,5 @@ function MobileSellerDetailView({ seller: s, onBack, onEdit }: Props) {
 }
 
 export function SellerDetailView(props: Props) {
-  return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopSellerDetailView {...props} />
-      </div>
-      <div className="block lg:hidden">
-        <MobileSellerDetailView {...props} />
-      </div>
-    </>
-  );
+  return <DesktopSellerDetailView {...props} />;
 }

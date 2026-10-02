@@ -93,7 +93,7 @@ export default function AgentsPage() {
 
   return (
     <>
-    <div className="hidden lg:block page-wrapper">
+    <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h1 className="text-3xl font-display font-semibold text-primary mb-1">Agents</h1>
@@ -103,14 +103,8 @@ export default function AgentsPage() {
       
       
       <div className="card">
-        <div className="card-header bg-surface-alt flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted whitespace-nowrap">
-              {currentList.length} agent{currentList.length === 1 ? '' : 's'}
-            </span>
-            <ViewToggle view={view} onChange={handleViewChange} />
-          </div>
-          
+        <div className="card-header bg-surface-alt flex flex-col xl:flex-row gap-3 xl:items-center justify-between">
+          {/* Tabs */}
           <div className="flex gap-4 border-b border-border">
             <button
               onClick={() => setActiveTab('active')}
@@ -138,6 +132,28 @@ export default function AgentsPage() {
               )}
             </button>
           </div>
+
+          {/* Search & Actions */}
+          <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-muted" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search agents..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); }}
+                className="form-input pl-10 w-full"
+              />
+            </div>
+            <span className="text-sm text-muted whitespace-nowrap flex-1 sm:flex-none">
+              {currentList.length} agent{currentList.length === 1 ? '' : 's'}
+            </span>
+            <div className="flex justify-end">
+              <ViewToggle view={view} onChange={handleViewChange} />
+            </div>
+          </div>
         </div>
         
         {view === 'grid' ? (
@@ -152,7 +168,6 @@ export default function AgentsPage() {
                   <AgentCard 
                     key={agent._id} 
                     agent={agent} 
-                    onView={() => {}} 
                     onEdit={() => setEditingItem(agent)} 
                     onDelete={() => handleDelete(agent._id)} 
                     isPending={activeTab === 'pending'}
@@ -198,7 +213,7 @@ export default function AgentsPage() {
                       </div>
                     </td>
                     <td>
-                      <div className="text-sm">{agent.email}</div>
+                      {/* <div className="text-sm">{agent.email}</div> */}
                       {agent.phone && <div className="text-xs text-muted">{agent.phone}</div>}
                     </td>
                     <td className="font-medium text-[#c4a47c]">{agent.propertiesSold || 0}</td>
@@ -255,170 +270,6 @@ export default function AgentsPage() {
       </div>
     </div>
     
-    {/* Mobile UI */}
-    <div className="block lg:hidden w-full pb-20 font-sans">
-      <div className="px-4 pt-6 pb-4">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agents</h1>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-            {currentList.length} Agent{currentList.length === 1 ? '' : 's'}
-          </span>
-        </div>
-
-        <div className="flex gap-4 border-b border-slate-200 mb-4">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`pb-2 text-sm font-semibold transition-colors border-b-2 ${
-              activeTab === 'active' 
-                ? 'border-[#B5923E] text-[#B5923E]' 
-                : 'border-transparent text-slate-500'
-            }`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`pb-2 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
-              activeTab === 'pending' 
-                ? 'border-[#B5923E] text-[#B5923E]' 
-                : 'border-transparent text-slate-500'
-            }`}
-          >
-            Pending
-            {pendingAgents.length > 0 && (
-              <span className="bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-[10px]">
-                {pendingAgents.length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Search Input */}
-        <div className="relative mb-4">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search agents by name, code, email..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-[#B5923E]"
-          />
-        </div>
-      </div>
-
-      {/* Agents Card List */}
-      <div className="px-4 space-y-3">
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-            <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            <span>Loading agents...</span>
-          </div>
-        ) : currentList.length === 0 ? (
-          <div className="py-14 px-4 bg-white rounded-2xl border border-slate-100 text-center flex flex-col items-center">
-            <UserCog size={32} className="text-slate-300 mb-2" />
-            <p className="text-sm font-bold text-slate-800">
-              {searchQuery ? `No matching ${activeTab} agents` : `No ${activeTab} agents found`}
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              {searchQuery ? 'Try adjusting your search terms.' : 'There are no agents in the system.'}
-            </p>
-          </div>
-        ) : (
-          currentList.map((agent: any) => (
-            <div 
-              key={agent._id} 
-              className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-3 transition-all"
-            >
-              {/* Header: Avatar, Name, Code */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-full bg-[#B5923E]/10 border border-[#B5923E]/30 text-[#B5923E] font-bold text-sm flex items-center justify-center flex-shrink-0">
-                    {getInitials(agent.name)}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 truncate">{agent.name}</h3>
-                    <p className="text-[11px] font-mono text-[#B5923E] font-semibold mt-0.5">{agent.code || 'NO-CODE'}</p>
-                  </div>
-                </div>
-
-                {/* Edit & Delete Action Buttons */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {activeTab === 'pending' ? (
-                    <>
-                      <button
-                        onClick={() => handleApprove(agent._id)}
-                        className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 active:scale-95 transition-all"
-                        title="Approve"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleReject(agent._id)}
-                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 active:scale-95 transition-all"
-                        title="Reject"
-                      >
-                        <X size={16} />
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    onClick={() => setEditingItem(agent)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
-                    title="Edit Agent"
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(agent._id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all"
-                    title="Delete Agent"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="space-y-1.5 pt-1 text-xs">
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Mail size={13} className="text-slate-400 flex-shrink-0" />
-                  <span className="truncate">{agent.email}</span>
-                </div>
-                {agent.phone && (
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Phone size={13} className="text-slate-400 flex-shrink-0" />
-                    <span>{agent.phone}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
-                {/* Stats */}
-                <div className="flex items-center gap-6">
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Properties Sold</span>
-                    <span className="text-sm font-bold text-[#B5923E]">{agent.propertiesSold || 0}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Revenue</span>
-                    <span className="text-sm font-bold text-[#B5923E]">₹{(agent.revenue || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-
-                {/* View Details Link */}
-                <Link
-                  to={`/agents/${agent._id}`}
-                  className="flex items-center gap-1 text-xs font-bold text-slate-700 hover:text-[#B5923E] bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 active:scale-95 transition-all"
-                >
-                  <span>View</span>
-                  <ChevronRight size={14} />
-                </Link>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
     </>
   );
 }

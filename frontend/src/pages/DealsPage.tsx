@@ -332,9 +332,7 @@ function DealDetailModal({
 
   return (
     <>
-    <div className="block lg:hidden fixed inset-0 bg-slate-50 z-50 overflow-y-auto">
-      <MobileDealDetailView deal={deal} onClose={onClose} onMarkDone={onMarkDone} isMarking={isMarking} onRequestUnassign={onRequestUnassign} />
-    </div>
+    
 
     <div className="hidden lg:flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-surface rounded-xl shadow-2xl w-full max-w-2xl my-auto" onClick={e => e.stopPropagation()}>
@@ -392,7 +390,7 @@ function DealDetailModal({
                 <>
                   <InfoRow label="Agent Name" value={referredAgent.name} />
                   <InfoRow label="Agent Code" value={referredAgent.code} />
-                  <InfoRow label="Email" value={referredAgent.email} />
+                  {/* <InfoRow label="Email" value={referredAgent.email} /> */}
                 </>
               ) : (
                 <InfoRow label="Referred By" value={null} />
@@ -402,7 +400,7 @@ function DealDetailModal({
             <Section title="Deal Agent (You)" icon={Handshake} accent>
               <InfoRow label="Agent Name" value={dealAgent?.name} />
               <InfoRow label="Agent Code" value={dealAgent?.code} />
-              <InfoRow label="Email" value={dealAgent?.email} />
+              {/* <InfoRow label="Email" value={dealAgent?.email} /> */}
             </Section>
           </div>
 
@@ -511,7 +509,7 @@ export default function DealsPage() {
     )}
 
     {/* Desktop */}
-    <div className="hidden lg:block page-wrapper">
+    <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h1 className="page-title">My Deals</h1>
@@ -617,134 +615,7 @@ export default function DealsPage() {
       </div>
     </div>
 
-    {/* Mobile */}
-    <div className="block lg:hidden w-full pb-20 font-sans">
-      <div className="px-4 pt-6 pb-4">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Deals</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Track ongoing & completed property deals</p>
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-medium shadow-2xs focus:outline-none focus:border-[#B5923E]"
-          >
-            <option value="">All Deals</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="unassign_requested">Unassign Requested</option>
-            <option value="pending_approval">Pending Approval</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-      </div>
 
-      <div className="px-4 space-y-3">
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-            <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            <span>Loading deals...</span>
-          </div>
-        ) : !data?.data?.length ? (
-          <div className="py-14 px-4 bg-white rounded-2xl border border-slate-100 text-center flex flex-col items-center">
-            <Handshake size={32} className="text-slate-300 mb-2" />
-            <p className="text-sm font-bold text-slate-800">
-              {statusFilter ? 'No deals match filter' : 'No deals found'}
-            </p>
-            <p className="text-xs text-slate-500 mt-1 max-w-[220px]">
-              {statusFilter ? 'Try switching the deal status filter.' : 'Open a deal from the Properties module.'}
-            </p>
-          </div>
-        ) : (
-          data.data.map((deal: any) => {
-            const p = deal.propertyId;
-            const locationName = typeof p?.location === 'object' ? p.location?.location : p?.location;
-
-            const badgeClass =
-              deal.status === 'ongoing' ? 'bg-indigo-50 text-indigo-700 border-indigo-200/60' :
-              deal.status === 'unassign_requested' ? 'bg-amber-50 text-amber-700 border-amber-200/60' :
-              deal.status === 'pending_approval' ? 'bg-amber-50 text-amber-800 border-amber-200/60' :
-              deal.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' : 'bg-slate-100 text-slate-600';
-
-            const badgeLabel =
-              deal.status === 'ongoing' ? 'Ongoing' :
-              deal.status === 'unassign_requested' ? 'Unassign Requested' :
-              deal.status === 'pending_approval' ? 'Pending Approval' :
-              deal.status === 'completed' ? 'Completed' : deal.status;
-
-            return (
-              <div
-                key={deal._id}
-                onClick={() => setViewingDeal(deal)}
-                className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-3 cursor-pointer active:scale-[0.99] transition-transform hover:border-slate-200"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#B5923E] flex items-center justify-center flex-shrink-0 border border-amber-200/60">
-                      <Handshake size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-slate-900 truncate">{p?.propertyTitle || 'Property Deal'}</h3>
-                      <p className="text-[11px] font-mono font-semibold text-[#B5923E] mt-0.5">{p?.code || deal.dealId}</p>
-                    </div>
-                  </div>
-                  <span className={clsx('px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex-shrink-0', badgeClass)}>
-                    {badgeLabel}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
-                  <div className="flex items-center gap-1.5 text-slate-500 truncate max-w-[180px]">
-                    <MapPin size={13} className="text-slate-400 flex-shrink-0" />
-                    <span className="truncate">{locationName || 'Location N/A'}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Original Price</span>
-                    <span className="text-xs font-bold text-slate-800">{fmt(p?.price)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-mono">ID: {deal.dealId}</span>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    {deal.status === 'ongoing' && (
-                      <>
-                        <button
-                          onClick={() => handleMarkDone(deal._id)}
-                          disabled={markDoneMutation.isPending}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
-                        >
-                          <CheckCircle size={13} />
-                          <span>Deal Done</span>
-                        </button>
-                        <button
-                          onClick={() => setUnassignDeal(deal)}
-                          className="px-2 py-1.5 rounded-xl border border-amber-400 text-amber-600 text-xs font-semibold hover:bg-amber-50 active:scale-95 transition-all flex items-center gap-1"
-                        >
-                          <LogOut size={13} />
-                        </button>
-                      </>
-                    )}
-                    {deal.status === 'unassign_requested' && (
-                      <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
-                        <Clock size={11} />
-                        Pending Admin
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setViewingDeal(deal)}
-                      className="p-1.5 rounded-xl bg-slate-50 text-slate-500 hover:text-slate-900 border border-slate-100 active:scale-95 transition-all"
-                    >
-                      <Eye size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
     </>
   );
 }

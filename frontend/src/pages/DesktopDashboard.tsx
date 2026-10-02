@@ -140,45 +140,47 @@ export function DesktopDashboard({ statsData, chartsData, recentPropertiesData, 
       </div>
 
       {/* 5 Core KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {kpiCards.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
             <Link
               key={idx}
               to={kpi.link}
-              className="group flex flex-col p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-[#B5923E]/40 transition-all duration-200 relative overflow-hidden"
+              className="group flex flex-col p-3 sm:p-4 bg-white border border-slate-200 rounded-xl sm:rounded-2xl shadow-sm hover:shadow-md hover:border-[#B5923E]/40 transition-all duration-200 relative overflow-hidden"
             >
               {/* Highlight bar for attention items */}
               {kpi.statusType === 'warning' && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
               )}
 
-              <div className="flex items-start justify-between mb-2">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-600 group-hover:text-[#B5923E] group-hover:bg-[#B5923E]/5 transition-colors">
-                  <Icon size={20} strokeWidth={1.5} />
+              <div className="flex items-start justify-between mb-1.5 sm:mb-2">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-600 group-hover:text-[#B5923E] group-hover:bg-[#B5923E]/5 transition-colors">
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.5} />
                 </div>
               </div>
 
-              <div className="mt-1">
-                <p className="text-3xl font-display font-bold text-slate-900 group-hover:text-[#B5923E] transition-colors">{kpi.value}</p>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5 tracking-tight">{kpi.title}</p>
+              <div className="mt-0.5 sm:mt-1">
+                <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 group-hover:text-[#B5923E] transition-colors leading-tight">{kpi.value}</p>
+                <p className="text-[10px] sm:text-xs font-semibold text-slate-500 mt-0.5 tracking-tight truncate">{kpi.title}</p>
               </div>
 
               {/* Secondary Info area */}
-              <div className="mt-3 pt-3 border-t border-slate-100 min-h-[36px] flex items-center">
+              <div className="mt-2 pt-2 sm:mt-3 sm:pt-3 border-t border-slate-100 min-h-[auto] sm:min-h-[36px] flex items-center">
                 {kpi.subInfo ? (
-                  kpi.subInfo
+                  <div className="truncate w-full">
+                    {kpi.subInfo}
+                  </div>
                 ) : kpi.statusMsg ? (
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md ${kpi.statusType === 'warning'
+                  <span className={`inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md ${kpi.statusType === 'warning'
                       ? 'bg-amber-50 text-amber-700'
                       : kpi.statusType === 'success'
                         ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-slate-50 text-slate-600'
                     }`}>
-                    {kpi.statusType === 'warning' && <AlertCircle size={10} />}
-                    {kpi.statusType === 'success' && <CheckCircle2 size={10} />}
-                    {kpi.statusMsg}
+                    {kpi.statusType === 'warning' && <AlertCircle size={10} className="flex-shrink-0" />}
+                    {kpi.statusType === 'success' && <CheckCircle2 size={10} className="flex-shrink-0" />}
+                    <span className="truncate">{kpi.statusMsg}</span>
                   </span>
                 ) : null}
               </div>

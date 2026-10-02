@@ -175,17 +175,11 @@ export function NotificationDropdown({
         )}
       </button>
 
-      {/* Backdrop for mobile */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2.5 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[75vh] font-sans animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-full mt-0 sm:mt-2.5 sm:w-96 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[75vh] font-sans animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Header */}
           <div className="px-3.5 py-3 border-b border-slate-100 flex items-center justify-between bg-white flex-shrink-0 gap-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">

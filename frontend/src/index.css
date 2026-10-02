@@ -50,11 +50,11 @@ h1, h2, h3, h4, h5, h6 {
 
   /* ── Page Layout ── */
   .page-wrapper {
-    @apply space-y-6 animate-slide-up;
+    @apply space-y-4 sm:space-y-6 animate-slide-up;
   }
 
   .page-header {
-    @apply flex justify-between items-center;
+    @apply flex flex-row justify-between items-center gap-3 sm:gap-0;
   }
 
   .page-title {
@@ -71,7 +71,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .card-header {
-    @apply px-4 sm:px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-2;
+    @apply px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex items-center justify-between flex-wrap gap-2;
   }
 
   .card-body {

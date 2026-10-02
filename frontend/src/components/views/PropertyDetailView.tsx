@@ -150,7 +150,7 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
           {p.referredByAgentId && (
             <>
               <Field label="Referred By (Agent)" value={p.referredByAgentId.name} />
-              <Field label="Agent Email" value={p.referredByAgentId.email} />
+              {/* <Field label="Agent Email" value={...email} /> */}
             </>
           )}
         </Section>
@@ -282,14 +282,5 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
 }
 
 export function PropertyDetailView(props: Props) {
-  return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopPropertyDetailView {...props} />
-      </div>
-      <div className="block lg:hidden">
-        <MobilePropertyDetailView {...props} />
-      </div>
-    </>
-  );
+  return <DesktopPropertyDetailView {...props} />;
 }

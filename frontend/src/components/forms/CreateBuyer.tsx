@@ -168,7 +168,7 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                 <select {...register('referredByAgentId')} className="form-select">
                   <option value="">Select Agent ▼</option>
                   {agents?.map((agent: any) => (
-                    <option key={agent._id} value={agent._id}>{agent.name} ({agent.email})</option>
+                    <option key={agent._id} value={agent._id}>{agent.name} ({agent.code || "NO CODE"})</option>
                   ))}
                 </select>
                 <p className="form-helper">Links this buyer registration to an agent for commission or tracking.</p>

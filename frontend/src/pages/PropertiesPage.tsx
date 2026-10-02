@@ -175,7 +175,7 @@ export default function PropertiesPage() {
 
   return (
     <>
-    <div className="hidden lg:block page-wrapper">
+    <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h1 className="page-title">Properties</h1>
@@ -191,10 +191,10 @@ export default function PropertiesPage() {
       <div className="card">
         {/* Filters & Search */}
         <div className="card-header bg-surface-alt flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-wrap">
-              <div className="relative flex-1 sm:min-w-[200px]">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full">
+            <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search size={16} className="text-muted" />
                 </div>
                 <input
@@ -208,7 +208,7 @@ export default function PropertiesPage() {
               <select
                 value={searchMode}
                 onChange={(e) => { setSearchMode(e.target.value); }}
-                className="form-select w-full sm:w-32"
+                className="form-select flex-1 min-w-[120px] sm:w-32 sm:flex-none"
               >
                 <option value="all">Search All</option>
                 <option value="location">By Location</option>
@@ -216,7 +216,7 @@ export default function PropertiesPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); }}
-                className="form-select w-full sm:w-32"
+                className="form-select flex-1 min-w-[120px] sm:w-32 sm:flex-none"
               >
                 <option value="">All Statuses</option>
                 <option value="Available">Available</option>
@@ -227,7 +227,7 @@ export default function PropertiesPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className={`btn-icon border px-3 gap-1.5 flex items-center text-xs font-medium ${showFilters || hasActiveFilters
+                className={`btn-icon border px-3 flex-1 sm:flex-none justify-center gap-1.5 flex items-center text-xs font-medium ${showFilters || hasActiveFilters
                   ? 'bg-accent/10 text-accent border-accent/30'
                   : 'border-border bg-surface hover:bg-surface-alt text-muted'
                   }`}
@@ -243,7 +243,7 @@ export default function PropertiesPage() {
 
               {data?.data?.length > 0 && (
                 <button 
-                  className="btn-outline flex items-center gap-2 px-3 text-xs"
+                  className="btn-outline flex items-center justify-center flex-1 sm:flex-none gap-2 px-3 text-xs"
                   onClick={handleExport}
                 >
                   <Download size={14} /> Export Excel
@@ -446,139 +446,7 @@ export default function PropertiesPage() {
       </div>
     </div>
     
-    <div className="block lg:hidden w-full pb-6 font-sans">
-      {/* Mobile Top Bar */}
-      <div className="px-4 pt-6 pb-4">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Properties</h1>
-          {user?.role === 'admin' && (
-            <button className="p-2 rounded-full bg-slate-900 text-white shadow-sm" onClick={() => setIsCreating(true)}>
-              <Plus size={18} />
-            </button>
-          )}
-        </div>
-        
-        {/* Search Bar & Filter */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search size={16} className="text-slate-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search properties..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 text-sm text-slate-900 rounded-full border border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-slate-200/50 transition-all"
-            />
-          </div>
-          <button 
-            onClick={() => setShowFilters(!showFilters)}
-            className={clsx("p-2.5 rounded-full transition-colors flex-shrink-0 relative", showFilters || hasActiveFilters ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600")}
-          >
-            <SlidersHorizontal size={18} />
-            {hasActiveFilters && !showFilters && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
-            )}
-          </button>
-        </div>
-
-        {/* Mobile Filter Dropdown (simplified inline) */}
-        {showFilters && (
-          <div className="mt-4 p-4 bg-white rounded-2xl shadow-sm border border-slate-100 space-y-3 animate-slide-up">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-semibold text-slate-900">Filters</span>
-              <button onClick={clearFilters} className="text-xs text-slate-500 font-medium">Clear</button>
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full p-2 bg-slate-50 text-sm rounded-lg border border-slate-200"
-            >
-              <option value="">All Statuses</option>
-              <option value="Available">Available</option>
-              <option value="In Deal">In Deal</option>
-              <option value="Sold">Sold</option>
-            </select>
-            <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full p-2 bg-slate-50 text-sm rounded-lg border border-slate-200">
-              <option value="">Any Type</option>
-              <option>Land</option><option>Shop</option><option>Independent House</option><option>Flat</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Property List */}
-      <div className="px-4 space-y-3">
-        {isLoading ? (
-          <div className="text-center py-10 text-sm text-slate-500">Loading...</div>
-        ) : !data?.data?.length ? (
-          <div className="text-center py-10 text-sm text-slate-500">No properties found.</div>
-        ) : (
-          data.data.map((prop: any) => {
-            let badgeColor = 'bg-slate-100 text-slate-600';
-            if (prop.propertyStatus === 'Available') badgeColor = 'bg-[#E7F7ED] text-[#137A3B]';
-            if (prop.propertyStatus === 'Sold') badgeColor = 'bg-[#FEE2E2] text-[#B91C1C]';
-            if (prop.propertyStatus === 'In Allotment') badgeColor = 'bg-[#E0E7FF] text-[#4338CA]';
-            if (prop.propertyStatus === 'In Deal') badgeColor = 'bg-[#FEF3C7] text-[#B45309]';
-
-            const tags = [prop.propertyType, prop.purpose, prop.area ? `${prop.area} sqft` : null].filter(Boolean).join(' · ');
-
-            return (
-              <div 
-                key={prop._id} 
-                onClick={() => setViewingItem(prop)}
-                className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100/50 flex flex-col gap-2 relative cursor-pointer active:scale-[0.99] transition-transform"
-              >
-                <div className="flex justify-between items-start pr-6">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 truncate pr-2">{prop.propertyTitle}</h3>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{prop.location?.location || prop.location}</p>
-                  </div>
-                  <p className="text-sm font-bold text-slate-900 flex-shrink-0">
-                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(prop.price)}
-                  </p>
-                </div>
-                
-                <div className="flex justify-between items-end mt-1">
-                  <p className="text-[10px] text-slate-400 font-medium">{tags}</p>
-                  <span className={clsx('px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wide', badgeColor)}>
-                    {prop.propertyStatus}
-                  </span>
-                </div>
-
-                {/* Express Interest — Agent only */}
-                {user?.role === 'agent' && (prop.propertyStatus === 'Available' || prop.propertyStatus === 'In Allotment') && (
-                  <div className="mt-2 pt-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={prop.isApplied || expressingInterestId === prop._id || expressInterestMutation.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!prop.isApplied) handleExpressInterest(prop._id);
-                      }}
-                      className={clsx(
-                        "w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
-                        prop.isApplied
-                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-200/50 cursor-default"
-                          : "bg-amber-500 text-white active:bg-amber-600 shadow-sm disabled:opacity-50"
-                      )}
-                    >
-                      <Handshake size={14} />
-                      {prop.isApplied ? 'Applied' : 'Interested'}
-                    </button>
-                  </div>
-                )}
-                
-                <div className="absolute right-3 top-4 text-slate-300">
-                  <ChevronRight size={18} />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    
     </>
   );
 }
