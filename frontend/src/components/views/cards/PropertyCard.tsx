@@ -1,4 +1,4 @@
-import { Eye, Edit, Handshake, MapPin, Tag, Square, Trash2 } from 'lucide-react';
+import { Eye, Edit, Handshake, MapPin, Tag, Square, Trash2, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 
@@ -9,7 +9,9 @@ export function PropertyCard({
   onExpressInterest,
   expressingInterestId,
   isExpressInterestPending,
-  onDelete
+  onDelete,
+  onDirectSell,
+  isDirectSellPending
 }: any) {
   const { user } = useAuth();
   
@@ -78,15 +80,26 @@ export function PropertyCard({
           <Eye size={16} />
         </button>
         
-        {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && (
-          <button
-            className={clsx("flex-1 flex justify-center items-center py-2 rounded transition-colors gap-1.5", p.isApplied ? "bg-emerald-500/10 text-emerald-600 cursor-default" : "text-amber-500 hover:bg-amber-50 disabled:opacity-50")}
-            title={p.isApplied ? "You have already applied" : "Express interest in this property"}
-            disabled={p.isApplied || expressingInterestId === p._id || isExpressInterestPending}
-            onClick={() => !p.isApplied && onExpressInterest && onExpressInterest(p._id)}
-          >
-            <Handshake size={16} />
-          </button>
+        {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && p.approvalStatus !== 'pending' && (
+          (p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id || p.referredByAgentId?._id === user?._id || p.referredByAgentId === user?._id) && onDirectSell ? (
+            <button
+              className="flex-1 flex justify-center items-center py-2 text-accent hover:bg-accent/10 rounded transition-colors"
+              title="Mark this property as sold independently"
+              disabled={isDirectSellPending}
+              onClick={(e) => { e.stopPropagation(); onDirectSell(p._id); }}
+            >
+              <CheckCircle size={16} />
+            </button>
+          ) : (
+            <button
+              className={clsx("flex-1 flex justify-center items-center py-2 rounded transition-colors gap-1.5", p.isApplied ? "bg-emerald-500/10 text-emerald-600 cursor-default" : "text-amber-500 hover:bg-amber-50 disabled:opacity-50")}
+              title={p.isApplied ? "You have already applied" : "Express interest in this property"}
+              disabled={p.isApplied || expressingInterestId === p._id || isExpressInterestPending}
+              onClick={(e) => { e.stopPropagation(); !p.isApplied && onExpressInterest && onExpressInterest(p._id); }}
+            >
+              <Handshake size={16} />
+            </button>
+          )
         )}
         
         {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (

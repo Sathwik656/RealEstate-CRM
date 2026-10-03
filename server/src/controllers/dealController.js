@@ -269,11 +269,75 @@ const approveDeal = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/deals/direct-sell/:propertyId
+ * Agent directly sells a property they created.
+ * Creates a Deal in 'pending_approval' status without requiring an allotment.
+ */
+const directSellProperty = async (req, res, next) => {
+  try {
+    const { propertyId } = req.params;
+    const agentId = req.user._id;
+
+    const property = await Property.findById(propertyId);
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    // Verify ownership (created by this agent or referred by this agent)
+    const isOwner = property.createdByUserId?.toString() === agentId.toString() ||
+                    property.referredByAgentId?.toString() === agentId.toString();
+
+    if (!isOwner) {
+      return res.status(403).json({ success: false, message: 'You can only directly sell properties you created.' });
+    }
+
+    if (!['Available', 'In Allotment'].includes(property.propertyStatus)) {
+      return res.status(400).json({ success: false, message: `Cannot sell directly. Property is currently ${property.propertyStatus}` });
+    }
+
+    // Check if a deal already exists for this property to avoid duplicates
+    const existingDeal = await Deal.findOne({ propertyId: property._id, status: { $ne: 'cancelled' } });
+    if (existingDeal) {
+      return res.status(400).json({ success: false, message: 'A deal is already active or completed for this property.' });
+    }
+
+    const dealId = await generateDealCode();
+    const deal = await Deal.create({
+      dealId,
+      propertyId: property._id,
+      agentId,
+      currentAgentId: agentId,
+      status: 'pending_approval',
+      markedDoneAt: new Date(),
+    });
+
+    property.propertyStatus = 'In Deal';
+    await property.save();
+
+    const populatedDeal = await Deal.findById(deal._id)
+      .populate({ path: 'propertyId', populate: { path: 'location' } })
+      .populate('currentAgentId', 'name email code')
+      .populate('agentId', 'name email code');
+
+    notifyDealCompleted(populatedDeal, populatedDeal.propertyId, populatedDeal.currentAgentId);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Deal submitted for Admin approval.',
+      data: populatedDeal,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getMyDeals,
   getAllDeals,
   getDealById,
   markDealDone,
   approveDeal,
+  directSellProperty,
   approveDealValidation,
 };

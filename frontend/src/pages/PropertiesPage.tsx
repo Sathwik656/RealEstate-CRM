@@ -129,6 +129,15 @@ export default function PropertiesPage() {
     }
   };
 
+  const directSellMutation = useMutation({
+    mutationFn: (propertyId: string) => api.post(`/deals/direct-sell/${propertyId}`),
+    onSuccess: () => {
+      refetch();
+      alert('Property marked as Sold! Deal submitted for Admin approval.');
+    },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to submit direct sell deal'),
+  });
+
   const expressInterestMutation = useMutation({
     mutationFn: (propertyId: string) => api.post(`/allotments/${propertyId}/interest`),
     onSuccess: () => {
@@ -169,6 +178,8 @@ export default function PropertiesPage() {
         onExpressInterest={handleExpressInterest}
         expressingInterestId={expressingInterestId}
         isExpressInterestPending={expressInterestMutation.isPending}
+        onDirectSell={user?.role === 'agent' ? (id: string) => directSellMutation.mutate(id) : undefined}
+        isDirectSellPending={directSellMutation.isPending}
       />
     );
   }
@@ -335,6 +346,8 @@ export default function PropertiesPage() {
                     expressingInterestId={expressingInterestId}
                     isExpressInterestPending={expressInterestMutation.isPending}
                     onDelete={() => handleDelete(p._id)}
+                    onDirectSell={user?.role === 'agent' ? (id: string) => directSellMutation.mutate(id) : undefined}
+                    isDirectSellPending={directSellMutation.isPending}
                   />
                 ))}
               </div>

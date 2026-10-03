@@ -7,6 +7,7 @@ const {
   getDealById,
   markDealDone,
   approveDeal,
+  directSellProperty,
   approveDealValidation,
 } = require('../controllers/dealController');
 const { requestUnassignment } = require('../controllers/reassignmentController');
@@ -23,6 +24,9 @@ router.patch('/:id/done', authorizeRoles('agent'), markDealDone);
 
 // Agent: request unassignment from their current deal
 router.patch('/:id/request-unassign', authorizeRoles('agent'), requestUnassignment);
+
+// Agent: directly sell their own property
+router.post('/direct-sell/:propertyId', authorizeRoles('agent'), directSellProperty);
 
 // Admin: view all deals (filterable by status)
 router.get('/', authorizeRoles('admin'), getAllDeals);

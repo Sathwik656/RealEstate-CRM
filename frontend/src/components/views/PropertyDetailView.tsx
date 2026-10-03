@@ -15,6 +15,8 @@ interface Props {
   onExpressInterest?: (propertyId: string) => void;
   isExpressInterestPending?: boolean;
   expressingInterestId?: string | null;
+  onDirectSell?: (propertyId: string) => void;
+  isDirectSellPending?: boolean;
 }
 
 function Field({ label, value, mono = false }: { label: string; value?: any; mono?: boolean }) {
@@ -45,7 +47,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
-function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId }: Props) {
+function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId, onDirectSell, isDirectSellPending }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -109,6 +111,16 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
           {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
             <button onClick={onEdit} className="btn-outline btn-sm flex items-center gap-1.5 flex-shrink-0">
               <Edit size={14} /> Edit
+            </button>
+          )}
+          {user?.role === 'agent' && (p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id || p.referredByAgentId?._id === user?._id || p.referredByAgentId === user?._id) && ['Available', 'In Allotment'].includes(p.propertyStatus) && p.approvalStatus !== 'pending' && onDirectSell && (
+            <button
+              onClick={() => onDirectSell(p._id)}
+              disabled={isDirectSellPending}
+              className="btn-accent btn-sm flex items-center gap-1.5 flex-shrink-0"
+              title="Mark this property as sold independently"
+            >
+              <CheckCircle size={14} /> {isDirectSellPending ? 'Submitting...' : 'Mark as Sold'}
             </button>
           )}
           {user?.role === 'agent' && (p.propertyStatus === 'Available' || p.propertyStatus === 'In Allotment') && onExpressInterest && (
@@ -191,7 +203,7 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
   );
 }
 
-function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId }: Props) {
+function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId, onDirectSell, isDirectSellPending }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const formatMonth = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : undefined;
@@ -229,8 +241,17 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
               </button>
             )}
             {(user?.role === 'admin' || p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id) && (
-              <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full">
+              <button onClick={onEdit} className="text-sm font-semibold text-accent py-1.5 px-3 bg-accent/10 rounded-full flex-shrink-0">
                 Edit
+              </button>
+            )}
+            {user?.role === 'agent' && (p.createdByUserId?._id === user?._id || p.createdByUserId === user?._id || p.referredByAgentId?._id === user?._id || p.referredByAgentId === user?._id) && ['Available', 'In Allotment'].includes(p.propertyStatus) && p.approvalStatus !== 'pending' && onDirectSell && (
+              <button
+                onClick={() => onDirectSell(p._id)}
+                disabled={isDirectSellPending}
+                className="text-sm font-semibold text-white py-1.5 px-3 bg-accent rounded-full flex items-center gap-1 flex-shrink-0"
+              >
+                <CheckCircle size={14} /> {isDirectSellPending ? 'Submitting...' : 'Mark Sold'}
               </button>
             )}
           </div>

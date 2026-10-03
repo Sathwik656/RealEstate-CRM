@@ -30,19 +30,31 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ─── Scrollbar ─────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f0f2f7;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #c9a84c;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a88630;
+  }
 }
-::-webkit-scrollbar-track {
-  background: #f0f2f7;
-}
-::-webkit-scrollbar-thumb {
-  background: #c9a84c;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #a88630;
+
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
 }
 
 /* ─── Component Layer ───────────────────────────────── */

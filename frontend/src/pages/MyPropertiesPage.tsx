@@ -49,6 +49,16 @@ export default function MyPropertiesPage() {
     onError: (e: any) => alert(e?.response?.data?.message || 'Failed to approve property'),
   });
 
+  const directSellMutation = useMutation({
+    mutationFn: (propertyId: string) => api.post(`/deals/direct-sell/${propertyId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-properties'] });
+      qc.invalidateQueries({ queryKey: ['properties'] });
+      alert('Property marked as Sold! Deal submitted for Admin approval.');
+    },
+    onError: (e: any) => alert(e?.response?.data?.message || 'Failed to submit direct sell deal'),
+  });
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this property?')) return;
     try {
@@ -90,6 +100,8 @@ export default function MyPropertiesPage() {
         property={currentItem}
         onBack={() => setViewingItem(null)}
         onEdit={() => { setEditingItem(currentItem); setViewingItem(null); }}
+        onDirectSell={user?.role === 'agent' ? (id) => directSellMutation.mutate(id) : undefined}
+        isDirectSellPending={directSellMutation.isPending}
       />
     );
   }
@@ -196,6 +208,8 @@ export default function MyPropertiesPage() {
                     onView={() => setViewingItem(p)}
                     onEdit={() => setEditingItem(p)}
                     onDelete={() => handleDelete(p._id)}
+                    onDirectSell={user?.role === 'agent' ? (id: string) => directSellMutation.mutate(id) : undefined}
+                    isDirectSellPending={directSellMutation.isPending}
                   />
                 ))}
               </div>
