@@ -533,18 +533,18 @@ export default function DealsPage() {
           <span className="text-sm text-muted">{data?.pagination?.total ?? 0} deals</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="data-table">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="data-table border-0">
             <thead>
               <tr>
-                <th>Deal ID</th>
-                <th>Property</th>
-                <th>Type</th>
-                <th>Price</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th>Opened</th>
-                <th className="text-right">Actions</th>
+                <th className="!bg-surface-alt">Deal ID</th>
+                <th className="!bg-surface-alt">Property</th>
+                <th className="!bg-surface-alt">Type</th>
+                <th className="!bg-surface-alt">Price</th>
+                <th className="!bg-surface-alt">Location</th>
+                <th className="!bg-surface-alt">Status</th>
+                <th className="!bg-surface-alt">Opened</th>
+                <th className="!bg-surface-alt text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -582,26 +582,23 @@ export default function DealsPage() {
                         {deal.status === 'ongoing' && (
                           <>
                             <button
-                              className="btn btn-sm bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50"
+                              className="btn btn-sm bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 inline-flex items-center gap-1"
                               disabled={markDoneMutation.isPending}
                               onClick={() => handleMarkDone(deal._id)}
                             >
-                              <CheckCircle size={13} />
-                              Deal Done
+                              <CheckCircle size={13} /> Deal Done
                             </button>
                             <button
-                              className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50"
+                              className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50 inline-flex items-center gap-1"
                               onClick={() => setUnassignDeal(deal)}
                             >
-                              <LogOut size={13} />
-                              Unassign
+                              <LogOut size={13} /> Unassign
                             </button>
                           </>
                         )}
                         {deal.status === 'unassign_requested' && (
                           <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
-                            <Clock size={12} />
-                            Pending Admin
+                            <Clock size={12} /> Pending Admin
                           </span>
                         )}
                       </div>
@@ -611,6 +608,61 @@ export default function DealsPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30">
+          {isLoading ? (
+            <div className="py-8 text-center text-muted text-sm">Loading deals...</div>
+          ) : !data?.data?.length ? (
+            <div className="py-8 text-center text-muted text-sm">No deals found. Open a deal from the Properties page.</div>
+          ) : data.data.map((deal: any) => {
+            const p = deal.propertyId;
+            return (
+              <div key={deal._id} className="bg-surface rounded-xl border border-border p-4 shadow-sm cursor-pointer" onClick={() => setViewingDeal(deal)}>
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-sm text-primary">{p?.propertyTitle || '—'}</h4>
+                    <div className="text-[10px] text-muted font-mono">{p?.code || '—'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-[10px] font-bold text-accent">{deal.dealId}</div>
+                    <div className="text-[10px] text-muted">{fmtDate(deal.createdAt)}</div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center mb-3">
+                  <DealStatusBadge status={deal.status} />
+                  <div className="text-sm font-bold text-primary">{fmt(p?.price)}</div>
+                </div>
+                
+                {deal.status === 'ongoing' && (
+                  <div className="flex gap-2 border-t border-border pt-3 mt-1" onClick={e => e.stopPropagation()}>
+                    <button
+                      className="btn btn-sm bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 flex-1 flex justify-center items-center gap-1"
+                      disabled={markDoneMutation.isPending}
+                      onClick={() => handleMarkDone(deal._id)}
+                    >
+                      <CheckCircle size={13} /> Done
+                    </button>
+                    <button
+                      className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50 flex-1 flex justify-center items-center gap-1"
+                      onClick={() => setUnassignDeal(deal)}
+                    >
+                      <LogOut size={13} /> Unassign
+                    </button>
+                  </div>
+                )}
+                {deal.status === 'unassign_requested' && (
+                  <div className="pt-2 mt-1 border-t border-border" onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-amber-600 font-medium flex items-center justify-center gap-1 w-full p-2 bg-amber-50 rounded-lg border border-amber-200">
+                      <Clock size={12} /> Pending Admin
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
