@@ -20,12 +20,12 @@ export function PropertyCard({
       className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-5 flex flex-col h-full cursor-pointer"
       onClick={onView}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div>
+      <div className="flex justify-between items-start mb-3 gap-2">
+        <div className="shrink-0">
           {p.approvalStatus === 'pending' ? (
-            <span className="badge badge-amber text-[10px]">⏳ Pending Approval</span>
+            <span className="badge badge-amber text-[10px] whitespace-nowrap">⏳ Pending Approval</span>
           ) : (
-            <span className={clsx('badge text-[10px]',
+            <span className={clsx('badge text-[10px] whitespace-nowrap',
               p.propertyStatus === 'Available' ? 'badge-green' :
               p.propertyStatus === 'In Allotment' ? 'badge-blue' :
               p.propertyStatus === 'In Deal' ? 'badge-amber' :
@@ -35,7 +35,7 @@ export function PropertyCard({
             </span>
           )}
         </div>
-        <div className="text-[10px] text-muted font-mono">{p.code}</div>
+        <div className="text-[10px] text-muted font-mono text-right break-all">{p.code}</div>
       </div>
       
       <h3 className="font-semibold text-primary text-lg mb-2 line-clamp-1" title={p.propertyTitle}>

@@ -83,8 +83,7 @@ export function AllotModal({ allotment, onClose, onAllotted }: { allotment: any;
 
   return (
     <>
-    {/* Desktop */}
-    <div className="hidden lg:flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
+    <div className="flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-surface rounded-xl shadow-2xl w-full max-w-4xl my-auto flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-5 rounded-t-xl flex-shrink-0" style={{ background: 'linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%)' }}>
           <p className="text-white/50 text-xs font-mono mb-1">{p.code}</p>
@@ -215,11 +214,7 @@ export function UnassignRequestModal({
 
   return (
     <>
-    {/* Mobile */}
-    
-
-    {/* Desktop */}
-    <div className="hidden lg:flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
+    <div className="flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-surface rounded-xl shadow-2xl w-full max-w-3xl my-auto" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-5 rounded-t-xl" style={{ background: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 100%)' }}>
           <p className="text-white/50 text-xs font-mono mb-1">{deal?.dealId}</p>
@@ -342,7 +337,7 @@ export default function AllotmentsPage() {
   const [viewingAllotment, setViewingAllotment] = useState<any>(null);
   const [handlingUnassign, setHandlingUnassign] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mobileTab, setMobileTab] = useState<'initial' | 'unassign'>('initial');
+  const [activeTab, setActiveTab] = useState<'initial' | 'unassign'>('initial');
 
   const qc = useQueryClient();
 
@@ -393,154 +388,259 @@ export default function AllotmentsPage() {
           <h1 className="page-title">Allotment Requests</h1>
           <p className="page-subtitle">Manage property assignments and handle unassignment requests</p>
         </div>
-        {unassignmentRequests.length > 0 && (
-          <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-            <AlertTriangle size={13} />
-            {unassignmentRequests.length} Unassignment Request{unassignmentRequests.length !== 1 ? 's' : ''}
-          </span>
-        )}
       </div>
 
-      {/* Category 1: Initial Allotments */}
       <div className="card mb-6">
-        <div className="card-header bg-surface-alt">
-          <div className="flex items-center gap-2">
-            <Handshake size={16} className="text-accent" />
-            <span className="font-bold text-sm">Pending Initial Allotment</span>
-            <span className="text-xs text-muted ml-1">({initialAllotments.length})</span>
+        <div className="card-header bg-surface-alt flex flex-col xl:flex-row gap-3 xl:items-center justify-between">
+          {/* Tabs */}
+          <div className="flex gap-4 border-b border-border">
+            <button
+              onClick={() => setActiveTab('initial')}
+              className={`pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'initial'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-foreground'
+              }`}
+            >
+              Pending Initial Allotment
+              {initialAllotments.length > 0 && (
+                <span className="bg-slate-100 text-slate-700 py-0.5 px-2 rounded-full text-[10px]">
+                  {initialAllotments.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('unassign')}
+              className={`pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'unassign'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted hover:text-foreground'
+              }`}
+            >
+              Unassignment Requests
+              {unassignmentRequests.length > 0 && (
+                <span className="bg-amber-100 text-amber-700 py-0.5 px-2 rounded-full text-[10px]">
+                  {unassignmentRequests.length}
+                </span>
+              )}
+            </button>
+          </div>
+          
+          {/* Search & Actions */}
+          <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-muted" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search properties..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="form-input pl-10 w-full"
+              />
+            </div>
+            <span className="text-sm text-muted whitespace-nowrap flex-1 sm:flex-none">
+              {activeTab === 'initial' ? filteredInitial.length : filteredUnassign.length} request{(activeTab === 'initial' ? filteredInitial.length : filteredUnassign.length) === 1 ? '' : 's'}
+            </span>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Property</th>
-                <th>Type</th>
-                <th>Location</th>
-                <th>Referred By</th>
-                <th>Interested Agents</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr><td colSpan={6} className="py-12 text-center text-muted">Loading allotments...</td></tr>
-              ) : initialAllotments.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center">
-                    <Users size={36} className="text-muted mx-auto mb-3 opacity-40" />
-                    <p className="text-muted text-sm">No properties currently in allotment.</p>
-                  </td>
-                </tr>
-              ) : initialAllotments.map((allotment: any) => {
-                const p = allotment.property;
-                const interests = allotment.interests;
-                const location = typeof p?.location === 'object' ? p.location?.location : p?.location;
-                return (
-                  <tr key={p._id} className="hover:bg-surface-alt transition-colors">
-                    <td>
-                      <div className="font-semibold text-sm">{p?.propertyTitle ?? '—'}</div>
-                      <div className="text-[10px] text-muted font-mono mt-0.5">{p?.code ?? '—'}</div>
-                    </td>
-                    <td className="text-sm text-muted">{p?.propertyType ?? '—'}</td>
-                    <td className="text-sm text-muted">{location ?? '—'}</td>
-                    <td>
-                      <div className="text-sm">{p.referredByAgentId?.name || '—'}</div>
-                    </td>
-                    <td>
-                      <div className="inline-flex items-center justify-center bg-accent/10 text-accent font-bold text-xs rounded-full h-6 px-3">
-                        {interests.length} Agent{interests.length !== 1 ? 's' : ''}
-                      </div>
-                    </td>
-                    <td className="text-right">
-                      <button className="btn btn-sm btn-accent" onClick={() => setViewingAllotment(allotment)}>
-                        <Handshake size={13} />
-                        Review &amp; Allot
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {/* Category 2: Unassignment Requests */}
-      <div className="card">
-        <div className="card-header bg-surface-alt">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-amber-500" />
-            <span className="font-bold text-sm">Unassignment Requests</span>
-            <span className="text-xs text-muted ml-1">({unassignmentRequests.length})</span>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Deal ID</th>
-                <th>Property</th>
-                <th>Current Agent</th>
-                <th>Location</th>
-                <th>Reason</th>
-                <th>Requested</th>
-                <th>Waiting Agents</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr><td colSpan={8} className="py-12 text-center text-muted">Loading...</td></tr>
-              ) : unassignmentRequests.length === 0 ? (
+        {/* Category 1: Initial Allotments */}
+        {activeTab === 'initial' && (
+          <>
+          <div className="hidden md:block overflow-x-auto rounded-b-lg">
+            <table className="data-table border-0">
+              <thead>
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <ClipboardCheck size={32} className="text-muted mx-auto mb-3 opacity-40" />
-                    <p className="text-muted text-sm">No unassignment requests.</p>
-                  </td>
+                  <th className="!bg-surface-alt">Property</th>
+                  <th className="!bg-surface-alt">Type</th>
+                  <th className="!bg-surface-alt">Location</th>
+                  <th className="!bg-surface-alt">Referred By</th>
+                  <th className="!bg-surface-alt">Interested Agents</th>
+                  <th className="text-right !bg-surface-alt">Actions</th>
                 </tr>
-              ) : unassignmentRequests.map((item: any) => {
-                const p = item.property;
-                const deal = item.currentDeal;
-                const location = typeof p?.location === 'object' ? p.location?.location : p?.location;
-                return (
-                  <tr key={deal?._id} className="hover:bg-surface-alt transition-colors">
-                    <td>
-                      <div className="font-mono text-xs font-semibold text-accent">{deal?.dealId}</div>
-                    </td>
-                    <td>
-                      <div className="font-semibold text-sm">{p?.propertyTitle ?? '—'}</div>
-                      <div className="text-[10px] text-muted font-mono mt-0.5">{p?.code ?? '—'}</div>
-                    </td>
-                    <td>
-                      <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-300/40 rounded-lg px-2.5 py-1.5">
-                        <User size={12} className="text-amber-600 flex-shrink-0" />
-                        <div>
-                          <div className="text-xs font-bold text-amber-700">{deal?.currentAgent?.name ?? '—'}</div>
-                          <div className="text-[10px] text-muted">{deal?.currentAgent?.code ?? ''}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="text-sm text-muted">{location ?? '—'}</td>
-                    <td className="text-sm text-muted max-w-[160px] truncate">{deal?.unassignReason || '—'}</td>
-                    <td className="text-sm text-muted">{deal?.unassignRequestedAt ? fmtDate(deal.unassignRequestedAt) : '—'}</td>
-                    <td>
-                      <div className="inline-flex items-center justify-center bg-blue-500/10 text-blue-700 font-bold text-xs rounded-full h-6 px-3">
-                        {item.interests.length}
-                      </div>
-                    </td>
-                    <td className="text-right">
-                      <button className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50" onClick={() => setHandlingUnassign(item)}>
-                        <RefreshCw size={13} />
-                        Handle
-                      </button>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={6} className="py-12 text-center text-muted border-0">Loading allotments...</td></tr>
+                ) : filteredInitial.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-16 text-center border-0">
+                      <Users size={36} className="text-muted mx-auto mb-3 opacity-40" />
+                      <p className="text-muted text-sm">No properties found in allotment.</p>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ) : filteredInitial.map((allotment: any) => {
+                  const p = allotment.property;
+                  const interests = allotment.interests;
+                  const location = typeof p?.location === 'object' ? p.location?.location : p?.location;
+                  return (
+                    <tr key={p._id} className="hover:bg-surface-alt/50 transition-colors">
+                      <td>
+                        <div className="font-semibold text-sm">{p?.propertyTitle ?? '—'}</div>
+                        <div className="text-[10px] text-muted font-mono mt-0.5">{p?.code ?? '—'}</div>
+                      </td>
+                      <td className="text-sm text-muted">{p?.propertyType ?? '—'}</td>
+                      <td className="text-sm text-muted">{location ?? '—'}</td>
+                      <td>
+                        <div className="text-sm">{p.referredByAgentId?.name || '—'}</div>
+                      </td>
+                      <td>
+                        <div className="inline-flex items-center justify-center bg-accent/10 text-accent font-bold text-xs rounded-full h-6 px-3">
+                          {interests.length} Agent{interests.length !== 1 ? 's' : ''}
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        <button className="btn btn-sm btn-accent" onClick={() => setViewingAllotment(allotment)}>
+                          <Handshake size={13} />
+                          Review &amp; Allot
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile View */}
+          <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30 rounded-b-lg">
+            {isLoading ? (
+              <div className="py-8 text-center text-muted text-sm">Loading...</div>
+            ) : filteredInitial.length === 0 ? (
+              <div className="py-8 text-center text-muted text-sm">No properties found.</div>
+            ) : filteredInitial.map((allotment: any) => {
+              const p = allotment.property;
+              return (
+                <div key={p._id} className="border border-border rounded-lg p-3 bg-surface shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-sm text-primary">{p?.propertyTitle ?? '—'}</div>
+                      <div className="text-[10px] text-muted font-mono">{p?.code ?? '—'}</div>
+                    </div>
+                    <span className="bg-accent/10 text-accent font-bold text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap">
+                      {allotment.interests.length} Agent{allotment.interests.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted mb-3 flex items-center gap-1">
+                    <MapPin size={12} />
+                    <span className="line-clamp-1">{typeof p?.location === 'object' ? p.location?.location : p?.location ?? '—'}</span>
+                  </div>
+                  <button className="btn btn-sm btn-accent w-full justify-center" onClick={() => setViewingAllotment(allotment)}>
+                    <Handshake size={13} />
+                    Review &amp; Allot
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </>
+        )}
+
+        {/* Category 2: Unassignment Requests */}
+        {activeTab === 'unassign' && (
+          <>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="data-table border-0">
+              <thead>
+                <tr>
+                  <th className="!bg-surface-alt">Deal ID</th>
+                  <th className="!bg-surface-alt">Property</th>
+                  <th className="!bg-surface-alt">Current Agent</th>
+                  <th className="!bg-surface-alt">Location</th>
+                  <th className="!bg-surface-alt">Reason</th>
+                  <th className="!bg-surface-alt">Requested</th>
+                  <th className="!bg-surface-alt">Waiting Agents</th>
+                  <th className="text-right !bg-surface-alt">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={8} className="py-12 text-center text-muted border-0">Loading...</td></tr>
+                ) : filteredUnassign.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center border-0">
+                      <ClipboardCheck size={32} className="text-muted mx-auto mb-3 opacity-40" />
+                      <p className="text-muted text-sm">No unassignment requests found.</p>
+                    </td>
+                  </tr>
+                ) : filteredUnassign.map((item: any) => {
+                  const p = item.property;
+                  const deal = item.currentDeal;
+                  const location = typeof p?.location === 'object' ? p.location?.location : p?.location;
+                  return (
+                    <tr key={deal?._id} className="hover:bg-surface-alt/50 transition-colors">
+                      <td>
+                        <div className="font-mono text-xs font-semibold text-accent">{deal?.dealId}</div>
+                      </td>
+                      <td>
+                        <div className="font-semibold text-sm">{p?.propertyTitle ?? '—'}</div>
+                        <div className="text-[10px] text-muted font-mono mt-0.5">{p?.code ?? '—'}</div>
+                      </td>
+                      <td>
+                        <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-300/40 rounded-lg px-2.5 py-1.5">
+                          <User size={12} className="text-amber-600 flex-shrink-0" />
+                          <div>
+                            <div className="text-xs font-bold text-amber-700">{deal?.currentAgent?.name ?? '—'}</div>
+                            <div className="text-[10px] text-muted">{deal?.currentAgent?.code ?? ''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-sm text-muted">{location ?? '—'}</td>
+                      <td className="text-sm text-muted max-w-[160px] truncate" title={deal?.unassignReason}>{deal?.unassignReason || '—'}</td>
+                      <td className="text-sm text-muted">{deal?.unassignRequestedAt ? fmtDate(deal.unassignRequestedAt) : '—'}</td>
+                      <td>
+                        <div className="inline-flex items-center justify-center bg-blue-500/10 text-blue-700 font-bold text-xs rounded-full h-6 px-3">
+                          {item.interests.length}
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        <button className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50" onClick={() => setHandlingUnassign(item)}>
+                          <RefreshCw size={13} />
+                          Handle
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile View */}
+          <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30 rounded-b-lg">
+            {isLoading ? (
+              <div className="py-8 text-center text-muted text-sm">Loading...</div>
+            ) : filteredUnassign.length === 0 ? (
+              <div className="py-8 text-center text-muted text-sm">No unassignment requests found.</div>
+            ) : filteredUnassign.map((item: any) => {
+              const p = item.property;
+              const deal = item.currentDeal;
+              return (
+                <div key={deal?._id} className="border border-border rounded-lg p-3 bg-surface shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-sm text-primary">{p?.propertyTitle ?? '—'}</div>
+                      <div className="text-[10px] text-muted font-mono">{p?.code ?? '—'}</div>
+                    </div>
+                    <div className="font-mono text-[10px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">{deal?.dealId}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-300/40 rounded px-2 py-1 mb-2 w-fit">
+                    <User size={10} className="text-amber-600" />
+                    <span className="text-[10px] font-bold text-amber-700">{deal?.currentAgent?.name ?? '—'}</span>
+                  </div>
+                  <div className="text-xs text-muted mb-3 line-clamp-2 italic bg-surface-alt p-2 rounded border border-border/50">
+                    "{deal?.unassignReason || 'No reason provided'}"
+                  </div>
+                  <button className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50 w-full justify-center" onClick={() => setHandlingUnassign(item)}>
+                    <RefreshCw size={13} />
+                    Handle Request
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </>
+        )}
       </div>
     </div>
 

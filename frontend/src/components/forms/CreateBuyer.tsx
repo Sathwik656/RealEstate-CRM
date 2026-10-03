@@ -8,13 +8,24 @@ import { ArrowLeft } from 'lucide-react';
 import { CurrencyInput } from './CurrencyInput';
 import { SegmentedControl } from '../ui/FormControls';
 
+const PROPERTY_TYPES = [
+  'Land',
+  'Shop',
+  'Independent House',
+  'Flat',
+  'Store',
+  'Garage',
+];
+
 const schema = z.object({
   buyerName: z.string().min(1, 'Required'),
   contactNumber: z.string().min(10, 'Min 10 digits'),
   preferredLocation: z.string().min(1, 'Required'),
+  propertyTypeInterested: z.string().optional(),
   purpose: z.enum(['Purchase', 'Rent']),
   budgetMax: z.preprocess(Number, z.number().min(0)),
   bhkRequirement: z.preprocess(Number, z.number().min(1)),
+  areaRequirement: z.preprocess(Number, z.number().min(0)),
   status: z.enum(['Active', 'Closed']),
   note: z.string().optional(),
   referredByAgentId: z.string().optional(),
@@ -30,7 +41,10 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
 
   const { data: agents } = useQuery({
     queryKey: ['agents-list'],
-    queryFn: async () => (await api.get('/users/agents')).data.data,
+    queryFn: async () => {
+      const res = await api.get('/users/agents');
+      return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+    }
   });
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -46,6 +60,7 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
       setServerError(null);
       const payload: any = { ...data };
       if (!payload.referredByAgentId) delete payload.referredByAgentId;
+      if (!payload.propertyTypeInterested) delete payload.propertyTypeInterested;
 
       if (isEdit) {
         await api.put(`/buyers/${initialData._id}`, payload);
@@ -117,10 +132,20 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
           <div className="p-5 sm:p-6">
             <h2 className="form-card-header">Property Requirements</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="form-group md:col-span-2">
+              <div className="form-group">
                 <label className="form-label">Preferred Location</label>
                 <input {...register('preferredLocation')} className="form-input" placeholder="e.g. Juhu" />
                 {errors.preferredLocation && <p className="form-error">{errors.preferredLocation.message}</p>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Property Type</label>
+                <select {...register('propertyTypeInterested')} className="form-select">
+                  <option value="">Any Type</option>
+                  {PROPERTY_TYPES.map(pt => (
+                    <option key={pt} value={pt}>{pt}</option>
+                  ))}
+                </select>
+                {errors.propertyTypeInterested && <p className="form-error">{errors.propertyTypeInterested.message}</p>}
               </div>
               
               <Controller
@@ -141,6 +166,14 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                 <label className="form-label">BHK Requirement</label>
                 <input type="number" {...register('bhkRequirement')} className="form-input" placeholder="e.g. 3" />
                 {errors.bhkRequirement && <p className="form-error">{errors.bhkRequirement.message}</p>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Area</label>
+                <div className="relative">
+                  <input type="number" {...register('areaRequirement')} className="form-input pr-12" placeholder="e.g. 1500" />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">sq ft</span>
+                </div>
+                {errors.areaRequirement && <p className="form-error">{errors.areaRequirement.message}</p>}
               </div>
               <div className="form-group md:col-span-2">
                 <label className="form-label">Note (Optional)</label>

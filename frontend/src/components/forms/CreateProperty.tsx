@@ -42,7 +42,10 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
 
   const { data: agents, isLoading: loadingAgents } = useQuery({
     queryKey: ['agents-list'],
-    queryFn: async () => (await api.get('/users/agents')).data.data,
+    queryFn: async () => {
+      const res = await api.get('/users/agents');
+      return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+    }
   });
 
   const { data: locations, isLoading: loadingLocs } = useQuery({

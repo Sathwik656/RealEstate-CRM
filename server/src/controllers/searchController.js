@@ -31,6 +31,7 @@ const { parsePage, parseLimit, buildPagination, FUSE_KEYS, MONGO_SEARCH_FIELDS }
   require('../utils/searchHelper');
 
 const { hybridSearch } = require('../utils/searchService');
+const { sanitizePropertiesForUser } = require('../utils/propertyHelper');
 
 // =============================================================================
 // GET /api/search/properties
@@ -154,6 +155,8 @@ const searchProperties = async (req, res, next) => {
         };
       });
     }
+
+    paged = await sanitizePropertiesForUser(paged, req.user);
 
     return res.status(200).json({
       success: true,
@@ -303,10 +306,12 @@ const searchGlobal = async (req, res, next) => {
       hybridSearch(Buyer, q, FUSE_KEYS.buyer, MONGO_SEARCH_FIELDS.buyer, req.user.role === 'admin' ? {} : { referredByAgentId: req.user._id }, { maxResults: limit }),
     ]);
 
+    const sanitizedProperties = await sanitizePropertiesForUser(properties, req.user);
+
     return res.status(200).json({
       success: true,
       message: `Global search results for "${q.trim()}"`,
-      data: { properties, sellers, buyers },
+      data: { properties: sanitizedProperties, sellers, buyers },
       meta: {
         query  : q.trim(),
         limit,

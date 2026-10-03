@@ -63,9 +63,7 @@ function ApproveModal({ deal, onClose, onApproved }: { deal: any; onClose: () =>
 
   return (
     <>
-    
-
-    <div className="hidden lg:flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
+    <div className="flex fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-surface rounded-xl shadow-2xl w-full max-w-2xl my-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="px-6 py-5 rounded-t-xl" style={{ background: 'linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%)' }}>
@@ -202,26 +200,26 @@ export default function DealApprovalsPage() {
       </div>
 
       <div className="card">
-        <div className="overflow-x-auto">
-          <table className="data-table">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="data-table border-0">
             <thead>
               <tr>
-                <th>Deal ID</th>
-                <th>Property</th>
-                <th>Deal Agent</th>
-                <th>Owner (Seller)</th>
-                <th>Original Price</th>
-                <th>Deal Opened</th>
-                <th>Marked Done</th>
-                <th className="text-right">Actions</th>
+                <th className="!bg-surface-alt">Deal ID</th>
+                <th className="!bg-surface-alt">Property</th>
+                <th className="!bg-surface-alt">Deal Agent</th>
+                <th className="!bg-surface-alt">Owner (Seller)</th>
+                <th className="!bg-surface-alt">Original Price</th>
+                <th className="!bg-surface-alt">Deal Opened</th>
+                <th className="!bg-surface-alt">Marked Done</th>
+                <th className="text-right !bg-surface-alt">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8} className="py-12 text-center text-muted">Loading...</td></tr>
+                <tr><td colSpan={8} className="py-12 text-center text-muted border-0">Loading...</td></tr>
               ) : !data?.data?.length ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center border-0">
                     <ClipboardCheck size={36} className="text-muted mx-auto mb-3 opacity-40" />
                     <p className="text-muted text-sm">No pending deal approvals.</p>
                   </td>
@@ -230,7 +228,7 @@ export default function DealApprovalsPage() {
                 const p = deal.propertyId;
                 const seller = p?.sellerId;
                 return (
-                  <tr key={deal._id} className="hover:bg-surface-alt transition-colors">
+                  <tr key={deal._id} className="hover:bg-surface-alt/50 transition-colors">
                     <td>
                       <div className="font-mono text-xs font-semibold text-accent">{deal.dealId}</div>
                     </td>
@@ -270,6 +268,41 @@ export default function DealApprovalsPage() {
               })}
             </tbody>
           </table>
+        </div>
+        
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30 rounded-b-lg">
+          {isLoading ? (
+            <div className="py-8 text-center text-muted text-sm">Loading...</div>
+          ) : !data?.data?.length ? (
+            <div className="py-8 text-center text-muted text-sm">No pending deal approvals.</div>
+          ) : data.data.map((deal: any) => {
+            const p = deal.propertyId;
+            return (
+              <div key={deal._id} className="border border-border rounded-lg p-3 bg-surface shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="font-semibold text-sm text-primary">{p?.propertyTitle ?? '—'}</div>
+                    <div className="text-[10px] text-muted font-mono">{p?.code ?? '—'}</div>
+                  </div>
+                  <div className="font-mono text-[10px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">{deal.dealId}</div>
+                </div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5 bg-accent/10 border border-accent/30 rounded px-2 py-1">
+                    <Handshake size={10} className="text-accent" />
+                    <span className="text-[10px] font-bold text-accent">{deal.agentId?.name ?? '—'}</span>
+                  </div>
+                  <div className="text-xs font-semibold">
+                    {p?.price ? `₹${p.price.toLocaleString('en-IN')}` : '—'}
+                  </div>
+                </div>
+                <button className="btn btn-sm btn-accent w-full justify-center" onClick={() => setReviewingDeal(deal)}>
+                  <Eye size={13} />
+                  Review &amp; Approve
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

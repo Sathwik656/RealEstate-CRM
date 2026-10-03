@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ArrowLeft, User, Calendar, FileText, Eye, Download, Handshake, CheckCircle, RefreshCw, X, Building2, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText, Eye, Download, Handshake, CheckCircle, RefreshCw, X, Building2, MapPin, Clock, ArrowRight, ChevronDown, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { ReportDetailModal } from './ReportsPage';
 import { AllotModal, UnassignRequestModal } from './AllotmentsPage';
@@ -120,6 +120,18 @@ export default function AgentDetailsPage() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [viewingReport, setViewingReport] = useState<any>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   // Modals state
   const [directReassignDeal, setDirectReassignDeal] = useState<any>(null); // For Reassign (Ongoing)
@@ -150,8 +162,7 @@ export default function AgentDetailsPage() {
   });
 
   // Parse selected value back to month/year for the API
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+  const handleMonthSelect = (val: string) => {
     if (!val) {
       setSelectedMonth('');
       setSelectedYear('');
@@ -160,6 +171,7 @@ export default function AgentDetailsPage() {
       setSelectedMonth(m);
       setSelectedYear(y);
     }
+    setIsMonthDropdownOpen(false);
   };
 
   const handleExport = async () => {
@@ -313,11 +325,10 @@ export default function AgentDetailsPage() {
               </div>
               <div>
                 <h2 className="text-2xl font-display font-bold text-white mb-1">{agent.name}</h2>
-                <div className="flex items-center gap-4 text-white/70 text-sm">
-                  <span className="font-mono bg-black/20 px-2 py-0.5 rounded text-accent border border-black/10 shadow-sm">{agent.code || 'NO-CODE'}</span>
-                  {/* <span>{agent.email}</span> */}
-                  {agent.phone && <span>{agent.phone}</span>}
-                  <div className="flex items-center gap-1.5 border-l border-white/20 pl-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-white/70 text-sm mt-1">
+                  <span className="font-mono bg-black/20 px-2 py-0.5 rounded text-accent border border-black/10 shadow-sm whitespace-nowrap">{agent.code || 'NO-CODE'}</span>
+                  {agent.phone && <span className="whitespace-nowrap">{agent.phone}</span>}
+                  <div className="flex items-center gap-1.5 sm:border-l sm:border-white/20 sm:pl-4 whitespace-nowrap">
                     <Calendar size={14} />
                     <span>Joined {new Date(agent.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
                   </div>
@@ -326,8 +337,23 @@ export default function AgentDetailsPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex overflow-x-auto gap-4 border-b border-border hide-scrollbar">
+          {/* Mobile Tab Dropdown */}
+          <div className="md:hidden">
+            <select
+              className="form-select w-full bg-surface shadow-sm font-semibold text-primary"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+            >
+              <option value="current">Current Properties ({currentProperties.length})</option>
+              <option value="interested">Interested Properties ({interestedProperties.length})</option>
+              <option value="completed">Completed Deals ({reports.length})</option>
+              <option value="returned">Returned / Reassigned ({reassignedProperties.length})</option>
+              <option value="history">History Log ({assignmentHistory.length})</option>
+            </select>
+          </div>
+
+          {/* Desktop Tabs */}
+          <div className="hidden md:flex overflow-x-auto gap-4 border-b border-border hide-scrollbar">
             <button
               onClick={() => setActiveTab('current')}
               className={clsx(
@@ -390,16 +416,16 @@ export default function AgentDetailsPage() {
                 <span className="badge badge-gray ml-2">{currentProperties.length}</span>
               </div>
             </div>
-            <div className="p-0 overflow-x-auto">
-              <table className="data-table">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="data-table border-0">
                 <thead>
                   <tr>
-                    <th>Property</th>
-                    <th>Location</th>
-                    <th>Original Price</th>
-                    <th>Current Deal Status</th>
-                    <th>Assigned Date</th>
-                    <th className="text-right">Actions</th>
+                    <th className="!bg-surface-alt">Property</th>
+                    <th className="!bg-surface-alt">Location</th>
+                    <th className="!bg-surface-alt">Original Price</th>
+                    <th className="!bg-surface-alt">Current Deal Status</th>
+                    <th className="!bg-surface-alt">Assigned Date</th>
+                    <th className="!bg-surface-alt text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -456,6 +482,60 @@ export default function AgentDetailsPage() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Mobile View */}
+            <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30">
+              {currentProperties.length === 0 ? (
+                <div className="py-8 text-center text-muted text-sm">No active properties currently assigned.</div>
+              ) : currentProperties.map((deal: any) => {
+                const p = deal.propertyId;
+                return (
+                  <div key={deal._id} className="bg-surface rounded-xl border border-border p-4 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-bold text-sm text-primary">{p?.propertyTitle || '—'}</h4>
+                        <div className="text-[10px] text-muted font-mono">{p?.code || '—'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm text-primary">{fmt(p?.price)}</div>
+                        <div className="text-[10px] text-muted">{fmtDate(deal.createdAt)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <DealStatusBadge status={deal.status} />
+                      {deal.status === 'unassign_requested' && (
+                        <span className="text-[10px] text-amber-600">Pending admin action</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between gap-2 border-t border-border pt-3 mt-3">
+                      <Link to={`/properties/${p?.code}`} className="btn btn-sm btn-outline flex-1 flex justify-center items-center gap-1">
+                        <Eye size={13} /> View
+                      </Link>
+                      {deal.status === 'unassign_requested' ? (
+                        <button onClick={() => setUnassignRequestDeal(deal)} className="btn btn-sm border border-amber-400 text-amber-600 hover:bg-amber-50 flex-1 flex justify-center items-center gap-1">
+                          <RefreshCw size={13} /> Handle
+                        </button>
+                      ) : (
+                        <>
+                          <button onClick={() => setDirectReassignDeal(deal)} className="btn btn-sm btn-outline flex-1 flex justify-center items-center gap-1 px-1">
+                            <RefreshCw size={13} /> Reassign
+                          </button>
+                          <button onClick={() => {
+                            if(window.confirm('Are you sure you want to unallot this property from the agent?')) {
+                              unallotMutation.mutate(deal._id);
+                            }
+                          }} className="btn btn-sm btn-outline border-red-200 text-red-600 hover:bg-red-50 flex-1 flex justify-center items-center gap-1 px-1" disabled={unallotMutation.isPending}>
+                            <X size={13} /> Unallot
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           )}
 
@@ -469,15 +549,15 @@ export default function AgentDetailsPage() {
                 <span className="badge badge-gray ml-2">{interestedProperties.length}</span>
               </div>
             </div>
-            <div className="p-0 overflow-x-auto">
-              <table className="data-table">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="data-table border-0">
                 <thead>
                   <tr>
-                    <th>Property</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Expressed Interest</th>
-                    <th className="text-right">Actions</th>
+                    <th className="!bg-surface-alt">Property</th>
+                    <th className="!bg-surface-alt">Location</th>
+                    <th className="!bg-surface-alt">Status</th>
+                    <th className="!bg-surface-alt">Expressed Interest</th>
+                    <th className="!bg-surface-alt text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -509,6 +589,38 @@ export default function AgentDetailsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30">
+              {interestedProperties.length === 0 ? (
+                <div className="py-8 text-center text-muted text-sm">No interested properties waiting for allotment.</div>
+              ) : interestedProperties.map((interest: any) => {
+                const p = interest.propertyId;
+                return (
+                  <div key={interest._id} className="bg-surface rounded-xl border border-border p-4 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-bold text-sm text-primary">{p?.propertyTitle || '—'}</h4>
+                        <div className="text-[10px] text-muted font-mono">{p?.code || '—'}</div>
+                      </div>
+                      <div className="text-right">
+                        <InterestStatusBadge status={interest.status} />
+                        <div className="text-[10px] text-muted mt-1">{fmtDate(interest.createdAt)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between gap-2 border-t border-border pt-3 mt-3">
+                      <Link to={`/properties/${p?.code}`} className="btn btn-sm btn-outline flex-1 flex justify-center items-center gap-1">
+                        <Eye size={13} /> View
+                      </Link>
+                      <button onClick={() => setAllotPropertyInt(interest)} className="btn btn-sm btn-accent flex-1 flex justify-center items-center gap-1">
+                        Allot Property
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           )}
 
@@ -521,32 +633,60 @@ export default function AgentDetailsPage() {
                 <h3 className="font-bold text-primary">Completed Deals</h3>
                 <span className="badge badge-gray ml-2">{reports.length}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <select 
-                  className="input max-w-[200px]"
-                  onChange={handleMonthChange}
-                  value={selectedMonth && selectedYear ? `${selectedMonth}-${selectedYear}` : ''}
-                >
-                  <option value="">All Months</option>
-                  {monthOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <button className="btn btn-accent" onClick={handleExport} disabled={isExporting}>
-                  <Download size={16} /> {isExporting ? 'Exporting...' : 'Export Excel'}
+              <div className="flex gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none" ref={dropdownRef}>
+                  <button 
+                    onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
+                    className="flex items-center justify-between gap-2 w-full sm:w-[200px] px-3 py-2 bg-surface hover:bg-surface-alt border border-border rounded-xl shadow-xs transition-colors h-[38px]"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Calendar size={14} className="text-accent flex-shrink-0" />
+                      <span className="text-sm font-semibold text-primary truncate">
+                        {selectedMonth && selectedYear ? monthOptions.find(o => o.value === `${selectedMonth}-${selectedYear}`)?.label : 'All Months'}
+                      </span>
+                    </div>
+                    <ChevronDown size={14} className={`text-muted flex-shrink-0 transition-transform duration-200 ${isMonthDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isMonthDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-full sm:w-[200px] bg-surface border border-border shadow-xl rounded-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 py-1 max-h-64 overflow-y-auto">
+                      <button 
+                        onClick={() => handleMonthSelect('')}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-surface-alt transition-colors ${!selectedMonth ? 'bg-accent/5 text-accent font-bold' : 'text-primary font-medium'}`}
+                      >
+                        All Months
+                        {!selectedMonth && <Check size={14} className="text-accent flex-shrink-0" />}
+                      </button>
+                      {monthOptions.map(opt => (
+                        <button 
+                          key={opt.value}
+                          onClick={() => handleMonthSelect(opt.value)}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-surface-alt transition-colors ${selectedMonth && selectedYear && `${selectedMonth}-${selectedYear}` === opt.value ? 'bg-accent/5 text-accent font-bold' : 'text-primary font-medium'}`}
+                        >
+                          <span className="truncate pr-2">{opt.label}</span>
+                          {selectedMonth && selectedYear && `${selectedMonth}-${selectedYear}` === opt.value && <Check size={14} className="text-accent flex-shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className="btn btn-accent flex-1 sm:flex-none justify-center px-3 h-[38px] whitespace-nowrap" onClick={handleExport} disabled={isExporting}>
+                  <Download size={14} className="flex-shrink-0" /> 
+                  <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export Excel'}</span>
+                  <span className="sm:hidden">{isExporting ? 'Exporting' : 'Export'}</span>
                 </button>
               </div>
             </div>
-            <div className="p-0 overflow-x-auto">
-              <table className="data-table">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="data-table border-0">
                 <thead>
                   <tr>
-                    <th>Property</th>
-                    <th>Deal ID</th>
-                    <th className="text-right">Original Price</th>
-                    <th className="text-right">Closing Price</th>
-                    <th>Completed Date</th>
-                    <th className="text-right">Actions</th>
+                    <th className="!bg-surface-alt">Property</th>
+                    <th className="!bg-surface-alt">Deal ID</th>
+                    <th className="!bg-surface-alt text-right">Original Price</th>
+                    <th className="!bg-surface-alt text-right">Closing Price</th>
+                    <th className="!bg-surface-alt">Completed Date</th>
+                    <th className="!bg-surface-alt text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -576,6 +716,37 @@ export default function AgentDetailsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30">
+              {isLoadingReports ? (
+                <div className="py-8 text-center text-muted text-sm">Loading completed deals...</div>
+              ) : reports.length === 0 ? (
+                <div className="py-8 text-center text-muted text-sm">No completed deals in this period.</div>
+              ) : reports.map((r: any) => (
+                <div key={r._id} className="bg-surface rounded-xl border border-border p-4 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-bold text-sm text-primary">{r.propertyId?.propertyTitle || '—'}</h4>
+                      <div className="text-[10px] text-muted font-mono">{r.propertyId?.code || '—'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] text-muted font-mono">{r.reportId}</div>
+                      <div className="text-[10px] text-muted">{fmtDate(r.completedAt)}</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-end mb-3">
+                    <div className="text-xs text-muted line-through">{fmt(r.originalPrice)}</div>
+                    <div className="font-bold text-sm text-emerald-600">{fmt(r.closingPrice)}</div>
+                  </div>
+                  <div className="flex pt-3 border-t border-border mt-2">
+                    <button className="btn btn-sm btn-outline w-full flex justify-center items-center gap-1" onClick={() => setViewingReport(r)}>
+                      <FileText size={13} /> View Report
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           )}
 
@@ -589,16 +760,16 @@ export default function AgentDetailsPage() {
                 <span className="badge badge-gray ml-2">{reassignedProperties.length}</span>
               </div>
             </div>
-            <div className="p-0 overflow-x-auto">
-              <table className="data-table">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="data-table border-0">
                 <thead>
                   <tr>
-                    <th>Property</th>
-                    <th>Assignment Date</th>
-                    <th>Returned/Reassigned Date</th>
-                    <th>Reason</th>
-                    <th>Current Agent</th>
-                    <th className="text-right">Action</th>
+                    <th className="!bg-surface-alt">Property</th>
+                    <th className="!bg-surface-alt">Assignment Date</th>
+                    <th className="!bg-surface-alt">Returned/Reassigned Date</th>
+                    <th className="!bg-surface-alt">Reason</th>
+                    <th className="!bg-surface-alt">Current Agent</th>
+                    <th className="!bg-surface-alt text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -637,6 +808,47 @@ export default function AgentDetailsPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30">
+              {reassignedProperties.length === 0 ? (
+                <div className="py-8 text-center text-muted text-sm">No returned or reassigned properties.</div>
+              ) : reassignedProperties.map((hist: any) => {
+                const p = hist.propertyId;
+                const deal = hist.dealId;
+                const isReassigned = deal && deal.currentAgentId;
+                return (
+                  <div key={hist._id} className="bg-surface rounded-xl border border-border p-4 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-bold text-sm text-primary">{p?.propertyTitle || '—'}</h4>
+                        <div className="text-[10px] text-muted font-mono">{p?.code || '—'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-amber-700 font-medium">Returned: {fmtDate(hist.endedAt)}</div>
+                        <div className="text-[10px] text-muted">Assigned: {fmtDate(hist.createdAt)}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted mb-2"><span className="font-semibold text-primary">Reason:</span> {hist.reason || '—'}</div>
+                    <div className="mb-3">
+                      {isReassigned ? (
+                        <div className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 inline-flex">
+                          <User size={12} />
+                          <span className="font-medium">Assigned to: {deal.currentAgentId.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted italic bg-slate-50 px-2 py-1 rounded border border-slate-200">Returned to Allotment</span>
+                      )}
+                    </div>
+                    <div className="flex pt-3 border-t border-border mt-2">
+                      <Link to={`/properties/${p?.code}`} className="btn btn-sm btn-outline w-full flex justify-center items-center gap-1">
+                        <RefreshCw size={13} /> View History
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
           )}

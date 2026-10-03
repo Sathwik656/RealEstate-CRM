@@ -112,7 +112,7 @@ export default function BuyersPage() {
         ) : (
           <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Purpose</th><th>BHK Requirement</th><th>Location</th><th>Budget Max</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Contact</th><th>Purpose</th><th>Property Type</th><th>BHK Requirement</th><th>Location</th><th>Budget Max</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
               {isLoading ? <tr><td colSpan={8} className="py-12 text-center text-muted">Loading...</td></tr>
                 : !data?.data?.length ? <tr><td colSpan={8} className="py-12 text-center text-muted">No buyers found.</td></tr>
@@ -128,6 +128,7 @@ export default function BuyersPage() {
                           ? <span className={clsx('badge text-[10px]', b.purpose === 'Purchase' ? 'badge-blue' : 'badge-amber')}>{b.purpose}</span>
                           : <span className="text-muted">—</span>}
                       </td>
+                      <td className="text-muted">{b.propertyTypeInterested || '—'}</td>
                       <td className="text-muted font-medium">{b.bhkRequirement ? `${b.bhkRequirement} BHK` : '—'}</td>
                       <td className="text-muted">{b.preferredLocation}</td>
                       <td className="font-medium">₹{b.budgetMax?.toLocaleString('en-IN') || 'N/A'}</td>

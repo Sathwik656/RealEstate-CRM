@@ -76,27 +76,32 @@ const getAllotments = async (req, res, next) => {
       .populate('referredByAgentId', 'name email code')
       .sort({ updatedAt: -1 });
 
-    const initialAllotments = await Promise.all(
-      allotmentProperties.map(async (property) => {
-        const interests = await PropertyInterest.find({ 
-          propertyId: property._id,
-          status: { $in: ['interested', 'waiting', 'selected'] }
-        })
-          .populate('agentId', 'name email code phone')
-          .sort({ createdAt: 1 });
+    const propertyIds = allotmentProperties.map(p => p._id);
 
-        return {
-          property,
-          currentDeal: null,
-          interests: interests.map((i) => ({
-            _id: i._id,
-            agent: i.agentId,
-            status: i.status,
-            expressedAt: i.createdAt,
-          })),
-        };
-      })
-    );
+    const initialInterests = await PropertyInterest.find({ 
+      propertyId: { $in: propertyIds },
+      status: { $in: ['interested', 'waiting', 'selected'] }
+    })
+      .populate('agentId', 'name email code phone')
+      .sort({ createdAt: 1 });
+
+    const interestsByProp = {};
+    initialInterests.forEach(i => {
+      const pid = i.propertyId.toString();
+      if (!interestsByProp[pid]) interestsByProp[pid] = [];
+      interestsByProp[pid].push({
+        _id: i._id,
+        agent: i.agentId,
+        status: i.status,
+        expressedAt: i.createdAt,
+      });
+    });
+
+    const initialAllotments = allotmentProperties.map(property => ({
+      property,
+      currentDeal: null,
+      interests: interestsByProp[property._id.toString()] || [],
+    }));
 
     // ── Category 2: Unassignment Requests (In Deal, agent requested to leave) ──
     const unassignDeals = await Deal.find({ status: 'unassign_requested' })
@@ -112,36 +117,39 @@ const getAllotments = async (req, res, next) => {
       .populate('agentId', 'name email code')
       .sort({ unassignRequestedAt: -1 });
 
-    const unassignmentRequests = await Promise.all(
-      unassignDeals.map(async (deal) => {
-        const property = deal.propertyId;
-        // Fetch all waiting/interested agents for potential reassignment
-        const interests = await PropertyInterest.find({
-          propertyId: property._id,
-          status: { $in: ['waiting', 'interested'] },
-        })
-          .populate('agentId', 'name email code phone')
-          .sort({ createdAt: 1 });
+    const unassignPropIds = unassignDeals.map(d => d.propertyId?._id).filter(Boolean);
 
-        return {
-          property,
-          currentDeal: {
-            _id: deal._id,
-            dealId: deal.dealId,
-            status: deal.status,
-            unassignRequestedAt: deal.unassignRequestedAt,
-            unassignReason: deal.unassignReason,
-            currentAgent: deal.currentAgentId,
-          },
-          interests: interests.map((i) => ({
-            _id: i._id,
-            agent: i.agentId,
-            status: i.status,
-            expressedAt: i.createdAt,
-          })),
-        };
-      })
-    );
+    const unassignInterests = await PropertyInterest.find({
+      propertyId: { $in: unassignPropIds },
+      status: { $in: ['waiting', 'interested'] },
+    })
+      .populate('agentId', 'name email code phone')
+      .sort({ createdAt: 1 });
+
+    const unassignInterestsByProp = {};
+    unassignInterests.forEach(i => {
+      const pid = i.propertyId.toString();
+      if (!unassignInterestsByProp[pid]) unassignInterestsByProp[pid] = [];
+      unassignInterestsByProp[pid].push({
+        _id: i._id,
+        agent: i.agentId,
+        status: i.status,
+        expressedAt: i.createdAt,
+      });
+    });
+
+    const unassignmentRequests = unassignDeals.map(deal => ({
+      property: deal.propertyId,
+      currentDeal: {
+        _id: deal._id,
+        dealId: deal.dealId,
+        status: deal.status,
+        unassignRequestedAt: deal.unassignRequestedAt,
+        unassignReason: deal.unassignReason,
+        currentAgent: deal.currentAgentId,
+      },
+      interests: unassignInterestsByProp[deal.propertyId?._id?.toString()] || [],
+    }));
 
     return res.status(200).json({
       success: true,

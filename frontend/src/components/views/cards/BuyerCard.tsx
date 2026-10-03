@@ -47,7 +47,7 @@ export function BuyerCard({ buyer: b, onView, onEdit, onDelete }: any) {
         <div className="flex items-center gap-2 text-xs text-muted">
           <Tag size={12} className="shrink-0" />
           <span className="truncate">
-            {b.purpose ? `${b.purpose}` : 'Any'} {b.bhkRequirement ? ` · ${b.bhkRequirement} BHK` : ''}
+            {b.purpose ? `${b.purpose}` : 'Any'} {b.propertyTypeInterested ? ` · ${b.propertyTypeInterested}` : ''} {b.bhkRequirement ? ` · ${b.bhkRequirement} BHK` : ''} {b.areaRequirement ? ` · ${b.areaRequirement.toLocaleString('en-IN')} sq ft` : ''}
           </span>
         </div>
       </div>

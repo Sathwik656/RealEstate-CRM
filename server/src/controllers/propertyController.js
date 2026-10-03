@@ -8,6 +8,7 @@ const Deal = require('../models/Deal');
 const PropertyInterest = require('../models/PropertyInterest');
 const { generateId } = require('../utils/generateId');
 const { generateEntityCode, reconstructPropertyCode } = require('../utils/generateCode');
+const { sanitizePropertiesForUser } = require('../utils/propertyHelper');
 const exceljs = require('exceljs');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
@@ -130,6 +131,8 @@ const getAllProperties = async (req, res, next) => {
       }));
     }
 
+    propertiesData = await sanitizePropertiesForUser(propertiesData, req.user);
+
     return res.status(200).json({
       success: true,
       message: 'Properties fetched successfully',
@@ -169,10 +172,12 @@ const getMyProperties = async (req, res, next) => {
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber');
 
+    const sanitizedData = await sanitizePropertiesForUser(properties, req.user);
+
     return res.status(200).json({
       success: true,
       message: 'My properties fetched successfully',
-      data: properties,
+      data: sanitizedData,
       pagination: {
         total,
         page: Number(page),
@@ -254,10 +259,12 @@ const getPropertyById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Property not found' });
     }
 
+    const sanitizedData = await sanitizePropertiesForUser(property, req.user);
+
     return res.status(200).json({
       success: true,
       message: 'Property fetched successfully',
-      data: property,
+      data: sanitizedData,
     });
   } catch (err) {
     next(err);
@@ -570,6 +577,8 @@ const exportProperties = async (req, res, next) => {
       .populate('location')
       .populate('sellerId', 'sellerName contactNumber');
 
+    const propertiesData = await sanitizePropertiesForUser(properties, req.user);
+
     const workbook = new exceljs.Workbook();
     const worksheet = workbook.addWorksheet('Properties');
 
@@ -593,7 +602,7 @@ const exportProperties = async (req, res, next) => {
       { header: 'Created Date', key: 'createdAt', width: 20 },
     ];
 
-    properties.forEach(p => {
+    propertiesData.forEach(p => {
       worksheet.addRow({
         code: p.code || '',
         propertyTitle: p.propertyTitle || '',

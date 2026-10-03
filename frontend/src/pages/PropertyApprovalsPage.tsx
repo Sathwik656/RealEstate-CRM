@@ -293,27 +293,27 @@ export default function PropertyApprovalsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="data-table border-0">
               <thead>
                 <tr>
-                  <th>Property</th>
-                  <th>Type &amp; Purpose</th>
-                  <th>Location</th>
-                  <th>Price</th>
-                  <th>Submitted By</th>
-                  <th>Submitted On</th>
-                  <th className="text-right">Actions</th>
+                  <th className="!bg-surface-alt">Property</th>
+                  <th className="!bg-surface-alt">Type &amp; Purpose</th>
+                  <th className="!bg-surface-alt">Location</th>
+                  <th className="!bg-surface-alt">Price</th>
+                  <th className="!bg-surface-alt">Submitted By</th>
+                  <th className="!bg-surface-alt">Submitted On</th>
+                  <th className="text-right !bg-surface-alt">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-muted">Loading pending properties...</td>
+                    <td colSpan={7} className="py-12 text-center text-muted border-0">Loading pending properties...</td>
                   </tr>
                 ) : !filtered.length ? (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center">
+                    <td colSpan={7} className="py-20 text-center border-0">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
                           <CheckCircle size={32} className="text-emerald-400" />
@@ -334,7 +334,7 @@ export default function PropertyApprovalsPage() {
                   return (
                     <tr
                       key={p._id}
-                      className="hover:bg-surface-alt transition-colors cursor-pointer"
+                      className="hover:bg-surface-alt/50 transition-colors cursor-pointer"
                       onClick={() => setReviewingProperty(p)}
                     >
                       {/* Property */}
@@ -409,6 +409,46 @@ export default function PropertyApprovalsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="md:hidden flex flex-col gap-3 p-3 bg-surface-alt/30 rounded-b-lg">
+            {isLoading ? (
+              <div className="py-8 text-center text-muted text-sm">Loading...</div>
+            ) : !filtered.length ? (
+              <div className="py-8 text-center">
+                <CheckCircle size={32} className="text-emerald-400 mx-auto mb-2 opacity-60" />
+                <div className="text-muted text-sm">No properties pending approval.</div>
+              </div>
+            ) : filtered.map((p: any) => {
+              const submittedBy = p.createdByUserId || p.referredByAgentId;
+              return (
+                <div key={p._id} className="border border-border rounded-lg p-3 bg-surface shadow-sm" onClick={() => setReviewingProperty(p)}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-sm text-primary">{p.propertyTitle}</div>
+                      <div className="text-[10px] text-muted font-mono">{p.code}</div>
+                    </div>
+                    <div className="font-semibold text-sm text-primary flex items-center">
+                      <IndianRupee size={12} className="text-muted mr-0.5" />
+                      {p.price ? p.price.toLocaleString('en-IN') : '—'}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded">{p.propertyType}</span>
+                    {p.purpose && <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded">{p.purpose}</span>}
+                  </div>
+                  <div className="text-xs text-muted mb-3 flex items-center gap-1">
+                    <MapPin size={12} />
+                    <span className="line-clamp-1">{typeof p.location === 'object' ? p.location?.location : p.location || '—'}</span>
+                  </div>
+                  <button className="btn btn-sm btn-accent w-full justify-center" onClick={(e) => { e.stopPropagation(); setReviewingProperty(p); }}>
+                    <ShieldCheck size={13} />
+                    Review &amp; Approve
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
