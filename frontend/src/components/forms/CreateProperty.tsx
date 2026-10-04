@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { CurrencyInput } from './CurrencyInput';
 import { LocationSelect } from './LocationSelect';
 import { SegmentedControl, SwitchToggle } from '../ui/FormControls';
+import { PropertyImageUploader, PropertyImage } from './PropertyImageUploader';
 
 const schema = z.object({
   propertyType: z.string().min(1, 'Required'),
@@ -24,6 +25,7 @@ const schema = z.object({
   mainDoorDirection: z.string().optional().or(z.literal('')),
   yearOfConstruction: z.string().optional(),
   address: z.string().optional(),
+  images: z.any().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,7 +65,8 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
       yearOfConstruction: initialData.yearOfConstruction ? new Date(initialData.yearOfConstruction).toISOString().slice(0, 7) : '',
       address: initialData.address || '',
       location: initialData.location?._id || initialData.location || '',
-    } : { parkingAvailable: false, sellerId: '', mainDoorDirection: '', yearOfConstruction: '', address: '', location: '' },
+      images: initialData.images || [],
+    } : { parkingAvailable: false, sellerId: '', mainDoorDirection: '', yearOfConstruction: '', address: '', location: '', images: [] },
   });
 
   if (loadingSellers || loadingAgents || loadingLocs) {
@@ -267,6 +270,22 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                 {errors.address && <p className="form-error">{errors.address.message}</p>}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Card 3.5: Property Images */}
+        <div className="form-card">
+          <div className="p-5 sm:p-6">
+            <Controller
+              name="images"
+              control={control}
+              render={({ field }) => (
+                <PropertyImageUploader
+                  images={field.value || []}
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </div>
         </div>
 

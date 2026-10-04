@@ -1,4 +1,4 @@
-import { Eye, Edit, Handshake, MapPin, Tag, Square, Trash2, CheckCircle } from 'lucide-react';
+import { Eye, Edit, Handshake, MapPin, Tag, Square, Trash2, CheckCircle, Home } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 
@@ -17,26 +17,41 @@ export function PropertyCard({
   
   return (
     <div 
-      className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all p-5 flex flex-col h-full cursor-pointer"
+      className="bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer overflow-hidden"
       onClick={onView}
     >
-      <div className="flex justify-between items-start mb-3 gap-2">
-        <div className="shrink-0">
-          {p.approvalStatus === 'pending' ? (
-            <span className="badge badge-amber text-[10px] whitespace-nowrap">⏳ Pending Approval</span>
-          ) : (
-            <span className={clsx('badge text-[10px] whitespace-nowrap',
-              p.propertyStatus === 'Available' ? 'badge-green' :
-              p.propertyStatus === 'In Allotment' ? 'badge-blue' :
-              p.propertyStatus === 'In Deal' ? 'badge-amber' :
-              p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
-            )}>
-              {p.propertyStatus}
-            </span>
-          )}
+      {/* Property Image Header */}
+      <div className="relative h-40 bg-slate-100 flex-shrink-0 w-full overflow-hidden">
+        {p.images && p.images.length > 0 ? (
+          <img src={p.images[0].url} alt={p.propertyTitle} className="w-full h-full object-cover transition-transform hover:scale-105" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100/80">
+            <Home size={32} className="mb-2 opacity-50" />
+            <span className="text-xs font-medium uppercase tracking-wider">No Image</span>
+          </div>
+        )}
+        
+        {/* Badges Overlay */}
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2">
+          <div className="shrink-0">
+            {p.approvalStatus === 'pending' ? (
+              <span className="badge badge-amber text-[10px] whitespace-nowrap shadow-sm">⏳ Pending Approval</span>
+            ) : (
+              <span className={clsx('badge text-[10px] whitespace-nowrap shadow-sm backdrop-blur-sm bg-white/90',
+                p.propertyStatus === 'Available' ? 'badge-green' :
+                p.propertyStatus === 'In Allotment' ? 'badge-blue' :
+                p.propertyStatus === 'In Deal' ? 'badge-amber' :
+                p.propertyStatus === 'Sold' ? 'badge-red' : 'badge-gray'
+              )}>
+                {p.propertyStatus}
+              </span>
+            )}
+          </div>
+          <div className="bg-black/60 text-white backdrop-blur-sm rounded-md px-2 py-1 text-[10px] font-mono whitespace-nowrap shadow-sm">{p.code}</div>
         </div>
-        <div className="text-[10px] text-muted font-mono text-right break-all">{p.code}</div>
       </div>
+
+      <div className="p-5 flex flex-col flex-1">
       
       <h3 className="font-semibold text-primary text-lg mb-2 line-clamp-1" title={p.propertyTitle}>
         {p.propertyTitle}
@@ -122,6 +137,7 @@ export function PropertyCard({
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   );

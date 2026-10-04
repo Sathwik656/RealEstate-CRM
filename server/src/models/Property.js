@@ -121,6 +121,11 @@ const propertySchema = new mongoose.Schema(
       default: 'approved', // Existing admin-created properties stay 'approved'
       index: true,
     },
+    images: [{
+      url: { type: String, required: true },
+      publicId: { type: String, required: true },
+      visibility: { type: String, enum: ['Public', 'Private'], default: 'Public' }
+    }],
   },
   {
     timestamps: true,

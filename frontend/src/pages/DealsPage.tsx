@@ -177,6 +177,23 @@ function MobileDealDetailView({
       </div>
 
       <div className="px-4 space-y-4">
+        {/* Mobile Deal Property Images */}
+        {p?.images && p.images.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Property Images</h2>
+            <div className="-mx-4 px-4 overflow-x-auto pb-2 hide-scrollbar flex gap-3 snap-x">
+              {p.images.map((img: any, idx: number) => (
+                <div key={img.publicId || idx} className="relative aspect-[4/3] w-[80%] shrink-0 snap-center rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                  <img src={img.url} alt={`Property view ${idx + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-medium uppercase px-2 py-0.5 rounded backdrop-blur-md">
+                    {img.visibility}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Property */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Property Details</h2>
@@ -356,6 +373,23 @@ function DealDetailModal({
                 <p className="text-xs text-amber-600">
                   {deal.unassignReason || 'No reason provided'} · {fmtDate(deal.unassignRequestedAt)}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Deal Property Images */}
+          {p?.images && p.images.length > 0 && (
+            <div className="mb-4">
+              <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Property Images</h2>
+              <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar snap-x">
+                {p.images.map((img: any, idx: number) => (
+                  <div key={img.publicId || idx} className="relative aspect-[4/3] h-40 shrink-0 snap-center rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
+                    <img src={img.url} alt={`Property view ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-medium uppercase px-2 py-0.5 rounded backdrop-blur-md">
+                      {img.visibility}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

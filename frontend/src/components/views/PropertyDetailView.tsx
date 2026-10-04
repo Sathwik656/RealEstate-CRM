@@ -2,8 +2,11 @@ import {
   ArrowLeft, Edit, Home, MapPin, IndianRupee, Maximize2,
   BedDouble, Car, Compass, Calendar, Phone, Tag,
   Building2, User, AlertCircle, CheckCircle, Handshake, ShieldCheck,
+  ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
@@ -47,9 +50,74 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
+function Lightbox({ images, initialIndex = 0, onClose }: { images: any[]; initialIndex?: number; onClose: () => void }) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
+
+  const next = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+  const prev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm" onClick={onClose}>
+      <button 
+        onClick={onClose} 
+        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all"
+      >
+        <X size={24} />
+      </button>
+      
+      {images.length > 1 && (
+        <>
+          <button 
+            onClick={prev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all"
+          >
+            <ChevronLeft size={32} />
+          </button>
+          
+          <button 
+            onClick={next}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all"
+          >
+            <ChevronRight size={32} />
+          </button>
+        </>
+      )}
+
+      <div className="w-full h-full max-w-6xl max-h-screen p-4 flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <img 
+          src={images[currentIndex].url} 
+          alt={`View ${currentIndex + 1}`} 
+          className="max-w-full max-h-[85vh] object-contain rounded-lg"
+        />
+        <div className="mt-4 text-white/70 font-medium tracking-wide">
+          {currentIndex + 1} / {images.length}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId, onDirectSell, isDirectSellPending }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const approveMutation = useMutation({
     mutationFn: () => api.patch(`/properties/${p._id}/approve`),
@@ -137,6 +205,30 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
         </div>
       </div>
 
+      {/* Image Gallery */}
+      {p.images && p.images.length > 0 && (
+        <div className="mt-6 mb-8">
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Property Images</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {p.images.map((img: any, idx: number) => (
+              <div 
+                key={img.publicId || idx} 
+                onClick={() => setLightboxIndex(idx)}
+                className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm cursor-pointer group"
+              >
+                <img src={img.url} alt={`Property view ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+                  <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+                </div>
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-medium uppercase px-2 py-0.5 rounded backdrop-blur-md">
+                  {img.visibility}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Basic Info */}
         <Section title="Property Details" icon={Building2}>
@@ -199,6 +291,9 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
           <Field label="Last Updated" value={formatDate(p.updatedAt)} />
         </Section>
       </div>
+      {lightboxIndex !== null && (
+        <Lightbox images={p.images} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
     </div>
   );
 }
@@ -206,6 +301,7 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
 function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressInterest, isExpressInterestPending, expressingInterestId, onDirectSell, isDirectSellPending }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const formatMonth = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : undefined;
 
   const approveMutation = useMutation({
@@ -258,6 +354,25 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
         </div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{p.propertyTitle}</h1>
         <p className="text-xs text-slate-500 font-mono mt-0.5">{p.code}</p>
+
+        {/* Mobile Image Gallery */}
+        {p.images && p.images.length > 0 && (
+          <div className="mt-5 -mx-4 px-4 overflow-x-auto pb-4 hide-scrollbar flex gap-3 snap-x">
+            {p.images.map((img: any, idx: number) => (
+              <div 
+                key={img.publicId || idx} 
+                onClick={() => setLightboxIndex(idx)}
+                className="relative aspect-[4/3] w-[80%] shrink-0 snap-center rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm cursor-pointer"
+              >
+                <img src={img.url} alt={`Property view ${idx + 1}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 active:bg-black/10 transition-colors duration-200"></div>
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-medium uppercase px-2 py-0.5 rounded backdrop-blur-md">
+                  {img.visibility}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         
         <div className="flex gap-2 mt-3 flex-wrap">
           <span className={clsx('px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide', badgeColor)}>
@@ -345,10 +460,21 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
           </div>
         </div>
       </div>
+      {lightboxIndex !== null && (
+        <Lightbox images={p.images} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
     </div>
   );
 }
 
 export function PropertyDetailView(props: Props) {
-  return <DesktopPropertyDetailView {...props} />;
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return isMobile ? <MobilePropertyDetailView {...props} /> : <DesktopPropertyDetailView {...props} />;
 }

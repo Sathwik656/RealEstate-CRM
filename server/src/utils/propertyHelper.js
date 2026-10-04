@@ -58,6 +58,11 @@ const sanitizePropertiesForUser = async (properties, user) => {
         }
         prop.sellerId = null;
       }
+      
+      // Enforce image visibility
+      if (prop.images && prop.images.length > 0) {
+        prop.images = prop.images.filter(img => img.visibility === 'Public');
+      }
     }
 
     return prop;

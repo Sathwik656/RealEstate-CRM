@@ -460,6 +460,17 @@ const updateProperty = async (req, res, next) => {
       }
     }
 
+    // Delete removed images from Cloudinary
+    if (req.body.images && oldProperty.images && oldProperty.images.length > 0) {
+      const cloudinary = require('../config/cloudinary');
+      const newPublicIds = req.body.images.map(img => img.publicId);
+      for (const img of oldProperty.images) {
+        if (img.publicId && !newPublicIds.includes(img.publicId)) {
+          cloudinary.uploader.destroy(img.publicId).catch(console.error);
+        }
+      }
+    }
+
     // Apply the update
     const updatedProperty = await Property.findByIdAndUpdate(
       oldProperty._id,
@@ -502,6 +513,16 @@ const deleteProperty = async (req, res, next) => {
 
     // Clean up junction records
     await SellerProperty.deleteMany({ propertyId: property._id });
+
+    // Clean up cloudinary images
+    if (property.images && property.images.length > 0) {
+      const cloudinary = require('../config/cloudinary');
+      for (const img of property.images) {
+        if (img.publicId) {
+          cloudinary.uploader.destroy(img.publicId).catch(console.error);
+        }
+      }
+    }
 
     return res.status(200).json({
       success: true,

@@ -105,6 +105,23 @@ function ReviewModal({ property: p, onClose, onApproved }: {
         </div>
 
         <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
+          {/* Property Images Gallery */}
+          {p.images && p.images.length > 0 && (
+            <div className="mb-4">
+              <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">Property Images</h2>
+              <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar snap-x">
+                {p.images.map((img: any, idx: number) => (
+                  <div key={img.publicId || idx} className="relative aspect-[4/3] h-40 shrink-0 snap-center rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
+                    <img src={img.url} alt={`Property view ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-medium uppercase px-2 py-0.5 rounded backdrop-blur-md">
+                      {img.visibility}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Property Details */}
           <InfoSection title="Property Details" icon={Building2}>
             <InfoRow label="Property Title" value={p.propertyTitle} />
