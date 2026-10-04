@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  register, login, verifyLoginOtp, resendLoginOtp, getMe,
+  register, login, verifyLoginOtp, resendLoginOtp, getMe, acceptTerms,
   registerValidation, loginValidation, verifyOtpValidation, resendOtpValidation
 } = require('../controllers/authController');
 const validate = require('../middleware/validate');
@@ -22,5 +22,8 @@ router.post('/resend-login-otp', resendOtpValidation, validate, resendLoginOtp);
 
 // GET /api/auth/me — protected
 router.get('/me', auth, getMe);
+
+// POST /api/auth/accept-terms — protected
+router.post('/accept-terms', auth, acceptTerms);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { TermsAndConditionsScreen } from '@/components/views/TermsAndConditionsScreen';
 
 export function ProtectedRoute({ children, requireAdmin }: { children: React.ReactNode, requireAdmin?: boolean }) {
   const { user, isLoading } = useAuth();
@@ -23,6 +24,11 @@ export function ProtectedRoute({ children, requireAdmin }: { children: React.Rea
 
   if (requireAdmin && user.role === 'agent') {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Show T&C if not accepted yet
+  if (user.termsAccepted === false) {
+    return <TermsAndConditionsScreen />;
   }
 
   return <>{children}</>;

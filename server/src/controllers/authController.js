@@ -116,6 +116,7 @@ const register = async (req, res, next) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          termsAccepted: user.termsAccepted,
           createdAt: user.createdAt,
         },
       },
@@ -234,6 +235,7 @@ const verifyLoginOtp = async (req, res, next) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          termsAccepted: user.termsAccepted,
         },
       },
     });
@@ -303,12 +305,45 @@ const getMe = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/auth/accept-terms
+ * Accept terms and conditions for the authenticated user.
+ */
+const acceptTerms = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    user.termsAccepted = true;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Terms accepted successfully',
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          termsAccepted: user.termsAccepted,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
   verifyLoginOtp,
   resendLoginOtp,
   getMe,
+  acceptTerms,
   registerValidation,
   loginValidation,
   verifyOtpValidation,

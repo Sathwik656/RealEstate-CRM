@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import {
-  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle, Bell, Loader2, User, LogOut, ChevronLeft, ChevronRight
+  Search, Plus, Edit2, Trash2, Save, X, MapPin, Check, AlertCircle, Bell, Loader2, User, LogOut, ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
@@ -144,7 +144,7 @@ function AddRow({
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const qc = useQueryClient();
-  const [activeSection, setActiveSection] = useState<'menu' | 'notifications' | 'locations' | 'profile'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'notifications' | 'locations' | 'profile' | 'terms'>('menu');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -341,13 +341,15 @@ export default function SettingsPage() {
             <h1 className="page-title">
               {activeSection === 'menu' ? 'Settings' : 
                activeSection === 'notifications' ? 'Notifications' : 
-               activeSection === 'locations' ? 'Location Codes' : 'Profile'}
+               activeSection === 'locations' ? 'Location Codes' : 
+               activeSection === 'terms' ? 'Terms & Conditions' : 'Profile'}
             </h1>
           </div>
           <p className="page-subtitle mt-1">
             {activeSection === 'menu' ? 'Manage your account and system preferences' : 
              activeSection === 'notifications' ? 'Manage notification preferences' :
              activeSection === 'locations' ? 'Manage locations and location codes' :
+             activeSection === 'terms' ? 'View the terms and conditions' :
              'View your account information'}
           </p>
         </div>
@@ -408,6 +410,22 @@ export default function SettingsPage() {
               <div>
                 <h3 className="text-base font-semibold text-primary group-hover:text-accent transition-colors">Profile</h3>
                 <p className="text-xs text-muted">View your account information</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all ml-4 flex-shrink-0" />
+          </button>
+
+          <button 
+            onClick={() => setActiveSection('terms')} 
+            className="card text-left p-4 hover:border-accent/50 hover:shadow-sm transition-all group flex items-center justify-between bg-surface border border-border/60 rounded-xl"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+                <FileText size={20} className="text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-primary group-hover:text-accent transition-colors">Terms & Conditions</h3>
+                <p className="text-xs text-muted">View the terms and conditions</p>
               </div>
             </div>
             <ChevronRight size={18} className="text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all ml-4 flex-shrink-0" />
@@ -639,6 +657,37 @@ export default function SettingsPage() {
                   {user?.role || 'user'}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms Section */}
+      {activeSection === 'terms' && (
+        <div className="card max-w-3xl">
+          <div className="card-header border-b border-border flex items-center gap-2">
+            <FileText size={16} className="text-accent" />
+            <div>
+              <h2 className="font-display font-semibold text-primary">Terms & Conditions</h2>
+              <p className="text-xs text-muted mt-0.5">Please review the rules of using the CRM</p>
+            </div>
+          </div>
+          <div className="card-body p-6">
+            <div className="prose prose-slate prose-sm max-w-none text-slate-600">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2 mt-0">1. Admin Access and Authority</h3>
+              <p className="mb-6">The Admin has full access and authority over all transactions, records, and changes made within the system.</p>
+
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">2. Management of Information</h3>
+              <p className="mb-6">Any property details, values, or other information created or submitted by you may be reviewed, managed, or modified by the Admin when required.</p>
+
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">3. Responsible Property Interest</h3>
+              <p className="mb-6">Only mark a property as <strong>Interested</strong> if you are genuinely interested and reasonably confident that you can proceed with the deal. Avoid marking properties as Interested without a genuine intention to continue the process.</p>
+
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">4. Responsible Use of the System</h3>
+              <p className="mb-6">All actions and transactions performed by you within the system may be recorded and visible to the Admin as activity logs. Please ensure that you use the system responsibly and carefully before taking any action.</p>
+
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">5. Accuracy and Accountability</h3>
+              <p className="mb-0">By using the system, you are responsible for the actions and information you submit. Repeated or unnecessary actions may be reviewed by the Admin.</p>
             </div>
           </div>
         </div>
