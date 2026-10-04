@@ -3,6 +3,9 @@ const { body } = require('express-validator');
 const Buyer = require('../models/Buyer');
 const { generateId } = require('../utils/generateId');
 const { generateEntityCode } = require('../utils/generateCode');
+const Property = require('../models/Property');
+const { sanitizePropertiesForUser } = require('../utils/propertyHelper');
+const { calculateMatchPercentage } = require('../utils/propertyMatcher');
 
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
@@ -94,6 +97,59 @@ const getBuyerById = async (req, res, next) => {
       success: true,
       message: 'Buyer fetched successfully',
       data: buyer,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/buyers/:id/matching-properties
+ */
+const getMatchingProperties = async (req, res, next) => {
+  try {
+    const filter = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id };
+    const buyer = await Buyer.findOne(filter);
+
+    if (!buyer) {
+      return res.status(404).json({ success: false, message: 'Buyer not found' });
+    }
+
+    const propFilter = { propertyStatus: 'Available' };
+    if (req.user.role === 'agent') {
+      propFilter.$or = [
+        { approvalStatus: 'approved' },
+        { approvalStatus: 'pending', createdByUserId: req.user._id },
+      ];
+    }
+
+    const properties = await Property.find(propFilter)
+      .populate('location')
+      .populate('referredByAgentId', 'name code')
+      .populate('createdByUserId', 'name code role')
+      .populate('sellerId', 'sellerName contactNumber');
+
+    const matches = properties.map(property => {
+      const percentage = calculateMatchPercentage(buyer, property);
+      
+      return {
+        property: property.toJSON(),
+        matchPercentage: percentage
+      };
+    });
+
+    const matched = matches.filter(m => m.matchPercentage >= 50);
+    matched.sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+    const sanitizedProperties = await sanitizePropertiesForUser(matched.map(m => m.property), req.user);
+    const finalData = matched.map((m, i) => ({
+      ...sanitizedProperties[i],
+      matchPercentage: m.matchPercentage
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: finalData
     });
   } catch (err) {
     next(err);
@@ -240,6 +296,7 @@ const updateBuyerStatus = async (req, res, next) => {
 module.exports = {
   getAllBuyers,
   getBuyerById,
+  getMatchingProperties,
   createBuyer,
   updateBuyer,
   deleteBuyer,

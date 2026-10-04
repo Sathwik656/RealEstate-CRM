@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllBuyers, getBuyerById,
+  getAllBuyers, getBuyerById, getMatchingProperties,
   createBuyer, updateBuyer, deleteBuyer,
   updateBuyerStatus, buyerValidation,
 } = require('../controllers/buyerController');
@@ -13,6 +13,7 @@ router.use(auth);
 
 router.get('/', getAllBuyers);
 router.get('/:id', getBuyerById);
+router.get('/:id/matching-properties', getMatchingProperties);
 router.post('/', buyerValidation, validate, createBuyer);
 router.put('/:id', updateBuyer);
 router.delete('/:id', deleteBuyer);

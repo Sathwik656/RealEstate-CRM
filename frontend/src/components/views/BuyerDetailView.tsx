@@ -1,9 +1,14 @@
 import {
   ArrowLeft, Edit, User, MapPin, Phone, IndianRupee,
-  Maximize2, BedDouble, Car, Calendar, Tag, Target, Bell,
+  Maximize2, BedDouble, Car, Calendar, Tag, Target, Bell, Sparkles, Loader2, Info
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import api from '@/lib/api';
+import { PropertyCard } from './cards/PropertyCard';
 
 interface Props {
   buyer: any;
@@ -41,6 +46,19 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
 
 function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'details' | 'matches'>('details');
+  
+  const { data: matchesData, isLoading: matchesLoading } = useQuery({
+    queryKey: ['matching-properties', b._id],
+    queryFn: async () => {
+      const res = await api.get(`/buyers/${b._id}/matching-properties`);
+      return res.data.data;
+    }
+  });
+
+  const matchingProperties = matchesData || [];
+
   const statusBadge = clsx('badge',
     b.status === 'Active' ? 'badge-green' :
     b.status === 'Closed' ? 'badge-red' :
@@ -85,8 +103,38 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Personal Info */}
+      <div className="flex items-center gap-4 border-b border-border mb-6 mt-6">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={clsx(
+            "pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors",
+            activeTab === 'details' ? "border-accent text-accent" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          )}
+        >
+          <Info size={16} /> Buyer Details
+        </button>
+        <button
+          onClick={() => setActiveTab('matches')}
+          className={clsx(
+            "pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors",
+            activeTab === 'matches' ? "border-accent text-accent" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+          )}
+        >
+          <Sparkles size={16} /> Matching Properties
+          {matchingProperties.length > 0 && (
+            <span className={clsx(
+              "px-1.5 py-0.5 rounded-full text-[10px]",
+              activeTab === 'matches' ? "bg-accent/10 text-accent" : "bg-slate-100 text-slate-500"
+            )}>
+              {matchingProperties.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'details' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Personal Info */}
         <Section title="Contact Details" icon={User}>
           <Field label="Buyer Name" value={b.buyerName} />
           <Field label="Buyer Code" value={b.code} mono />
@@ -138,13 +186,57 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
           <Field label="Created At" value={formatDate(b.createdAt)} />
           <Field label="Last Updated" value={formatDate(b.updatedAt)} />
         </Section>
-      </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          {matchesLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin mb-4" />
+              <p>Calculating matches...</p>
+            </div>
+          ) : matchingProperties.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {matchingProperties.map((match: any) => (
+                <PropertyCard 
+                  key={match._id} 
+                  property={match} 
+                  matchPercentage={match.matchPercentage}
+                  onView={() => navigate(`/properties/${match.code}`)} 
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="card py-12 text-center bg-slate-50 border-dashed border-2">
+              <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
+                <Target className="text-slate-400" size={20} />
+              </div>
+              <h3 className="font-semibold text-slate-700">No matching properties found.</h3>
+              <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+                Try adjusting the buyer's budget or location requirements to see more properties.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'details' | 'matches'>('details');
+
+  const { data: matchesData, isLoading: matchesLoading } = useQuery({
+    queryKey: ['matching-properties', b._id],
+    queryFn: async () => {
+      const res = await api.get(`/buyers/${b._id}/matching-properties`);
+      return res.data.data;
+    }
+  });
+
+  const matchingProperties = matchesData || [];
+
   const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined;
   
@@ -185,8 +277,38 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         </div>
       </div>
 
-      <div className="px-4 space-y-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+      <div className="flex items-center w-full border-b border-slate-200 mb-4 bg-white sticky top-0 z-10">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={clsx(
+            "flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors",
+            activeTab === 'details' ? "border-accent text-accent" : "border-transparent text-slate-500"
+          )}
+        >
+          <Info size={16} /> Details
+        </button>
+        <button
+          onClick={() => setActiveTab('matches')}
+          className={clsx(
+            "flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors",
+            activeTab === 'matches' ? "border-accent text-accent" : "border-transparent text-slate-500"
+          )}
+        >
+          <Sparkles size={16} /> Matches
+          {matchingProperties.length > 0 && (
+            <span className={clsx(
+              "px-1.5 py-0.5 rounded-full text-[10px]",
+              activeTab === 'matches' ? "bg-accent/10 text-accent" : "bg-slate-100 text-slate-500"
+            )}>
+              {matchingProperties.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'details' ? (
+        <div className="px-4 space-y-4">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Contact Details</h2>
           <div className="space-y-2.5">
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
@@ -293,7 +415,35 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      ) : (
+        <div className="px-4">
+          {matchesLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin mb-3" />
+              <p className="text-sm">Calculating matches...</p>
+            </div>
+          ) : matchingProperties.length > 0 ? (
+            <div className="space-y-4">
+              {matchingProperties.map((match: any) => (
+                <PropertyCard 
+                  key={match._id} 
+                  property={match} 
+                  matchPercentage={match.matchPercentage}
+                  onView={() => navigate(`/properties/${match.code}`)} 
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-100/50">
+              <div className="mx-auto w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                <Target className="text-slate-400" size={20} />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700">No matches found.</h3>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
