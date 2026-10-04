@@ -29,6 +29,7 @@ const schema = z.object({
   status: z.enum(['Active', 'Closed']),
   note: z.string().optional(),
   referredByAgentId: z.string().optional(),
+  reminderDate: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -37,6 +38,7 @@ interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any
 export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showReferral, setShowReferral] = useState(!!initialData?.referredByAgentId);
+  const [enableReminder, setEnableReminder] = useState(!!initialData?.reminderDate && initialData?.reminderStatus === 'pending');
   const isEdit = !!initialData;
 
   const { data: agents } = useQuery({
@@ -52,6 +54,7 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
     defaultValues: initialData ? { 
       ...initialData,
       referredByAgentId: initialData.referredByAgentId?._id || initialData.referredByAgentId || '',
+      reminderDate: initialData.reminderDate ? new Date(initialData.reminderDate).toISOString().slice(0, 16) : '',
     } : { status: 'Active', purpose: 'Purchase' },
   });
 
@@ -61,6 +64,8 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
       const payload: any = { ...data };
       if (!payload.referredByAgentId) delete payload.referredByAgentId;
       if (!payload.propertyTypeInterested) delete payload.propertyTypeInterested;
+      if (!enableReminder) payload.reminderDate = null;
+      else if (!payload.reminderDate) delete payload.reminderDate;
 
       if (isEdit) {
         await api.put(`/buyers/${initialData._id}`, payload);
@@ -205,6 +210,40 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                   ))}
                 </select>
                 <p className="form-helper">Links this buyer registration to an agent for commission or tracking.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card 4: Reminder */}
+        <div className="form-card">
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="form-card-header mb-0">Buyer Reminder</h2>
+                <p className="text-sm text-slate-500">Get notified to follow up with this buyer.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={enableReminder} 
+                  onChange={(e) => setEnableReminder(e.target.checked)} 
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
+              </label>
+            </div>
+            
+            {enableReminder && (
+              <div className="form-group mt-4 pt-4 border-t border-slate-100">
+                <label className="form-label">Remind me on</label>
+                <input 
+                  type="datetime-local" 
+                  {...register('reminderDate')} 
+                  className="form-input" 
+                />
+                {errors.reminderDate && <p className="form-error">{errors.reminderDate.message}</p>}
+                <p className="form-helper mt-2">You will receive an in-app and push notification at this exact time.</p>
               </div>
             )}
           </div>

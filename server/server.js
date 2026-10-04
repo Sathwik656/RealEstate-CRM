@@ -1,8 +1,12 @@
 'use strict';
 require('dotenv').config();
 const app = require('./src/app');
+const initReminderCron = require('./src/services/reminderCron');
 
 const PORT = process.env.PORT || 5000;
+
+// Initialize Cron Jobs
+initReminderCron();
 
 const server = app.listen(PORT, () => {
   console.log(`\n Real Estate CRM API Server running in ${process.env.NODE_ENV || 'development'} mode`);

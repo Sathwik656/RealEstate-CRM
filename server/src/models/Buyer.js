@@ -111,6 +111,15 @@ const buyerSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    reminderDate: {
+      type: Date,
+      default: null,
+    },
+    reminderStatus: {
+      type: String,
+      enum: ['pending', 'completed'],
+      default: 'pending',
+    },
   },
   {
     timestamps: true,

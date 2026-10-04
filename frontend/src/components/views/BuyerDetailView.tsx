@@ -1,6 +1,6 @@
 import {
   ArrowLeft, Edit, User, MapPin, Phone, IndianRupee,
-  Maximize2, BedDouble, Car, Calendar, Tag, Target,
+  Maximize2, BedDouble, Car, Calendar, Tag, Target, Bell,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
@@ -125,6 +125,14 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
           <Field label="Remarks" value={b.remarks} />
         </Section>
 
+        {/* Reminder */}
+        {b.reminderDate && (
+          <Section title="Follow-up Reminder" icon={Bell}>
+            <Field label="Scheduled For" value={new Date(b.reminderDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })} />
+            <Field label="Status" value={b.reminderStatus === 'completed' ? 'Completed' : 'Pending'} />
+          </Section>
+        )}
+
         {/* Timestamps */}
         <Section title="Record Info" icon={Calendar}>
           <Field label="Created At" value={formatDate(b.createdAt)} />
@@ -243,6 +251,22 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
                 <span className="text-sm text-slate-500">Email</span>
                 {/* <span className="text-sm font-medium text-slate-900">{...email}</span> */}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {b.reminderDate && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100/50">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Bell size={14} className="text-accent"/> Reminder</h2>
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Scheduled</span>
+                <span className="text-sm font-medium text-slate-900">{new Date(b.reminderDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Status</span>
+                <span className={clsx("text-sm font-medium", b.reminderStatus === 'completed' ? 'text-emerald-600' : 'text-amber-600')}>{b.reminderStatus === 'completed' ? 'Completed' : 'Pending'}</span>
               </div>
             </div>
           </div>

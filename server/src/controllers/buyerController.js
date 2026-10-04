@@ -23,6 +23,16 @@ const buyerValidation = [
     .withMessage('Purpose is required')
     .isIn(['Purchase', 'Rent'])
     .withMessage('Purpose must be Purchase or Rent'),
+  body('reminderDate')
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage('Reminder date must be a valid date')
+    .custom((value) => {
+      if (new Date(value) <= new Date()) {
+        throw new Error('Reminder date must be in the future');
+      }
+      return true;
+    }),
 ];
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
@@ -99,6 +109,14 @@ const createBuyer = async (req, res, next) => {
     const buyerData = req.body;
     const buyerId = generateId('BUY');
     const code = await generateEntityCode('Buyer');
+    
+    if (buyerData.reminderDate) {
+      buyerData.reminderStatus = 'pending';
+    } else {
+      buyerData.reminderDate = null;
+      buyerData.reminderStatus = 'pending';
+    }
+
     const finalBuyerData = {
       ...buyerData,
       buyerId,
@@ -131,6 +149,13 @@ const updateBuyer = async (req, res, next) => {
   try {
     const buyerData = req.body;
     delete buyerData.buyerId;
+
+    if (buyerData.reminderDate) {
+      buyerData.reminderStatus = 'pending';
+    } else if (buyerData.reminderDate === null || buyerData.reminderDate === '') {
+      buyerData.reminderDate = null;
+      buyerData.reminderStatus = 'pending';
+    }
 
     const buyer = await Buyer.findOneAndUpdate(
       req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, referredByAgentId: req.user._id },

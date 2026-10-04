@@ -343,6 +343,34 @@ const notifyAgentPropertyApproved = async (property, agentId) => {
   }
 };
 
+/**
+ * Notify an Agent or Admin about a Buyer follow-up reminder.
+ */
+const notifyBuyerReminder = async (buyer) => {
+  try {
+    const creatorId = buyer.createdByUserId;
+    if (!creatorId) return;
+
+    const user = await User.findById(creatorId).select('_id notificationsEnabled');
+    if (!user) return;
+
+    const payload = {
+      title: 'Next follow-up',
+      body: `Follow up with Buyer: ${buyer.buyerName}`,
+      icon: '/logo.png',
+      badge: '/notification-badge.png',
+      data: { url: `/buyers/${buyer._id}` },
+    };
+
+    await saveToDb([user._id], payload, 'BUYER_REMINDER');
+    if (user.notificationsEnabled) {
+      await sendNotificationToUser(user._id, payload);
+    }
+  } catch (err) {
+    console.error('notifyBuyerReminder error:', err);
+  }
+};
+
 module.exports = {
   sendNotificationToUser,
   notifyAllEligibleAgents,
@@ -356,4 +384,5 @@ module.exports = {
   notifyAgentUnassigned,
   notifyAdminsPendingProperty,
   notifyAgentPropertyApproved,
+  notifyBuyerReminder,
 };
