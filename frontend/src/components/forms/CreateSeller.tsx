@@ -15,7 +15,7 @@ const schema = z.object({
   referredByAgentId: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
-interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any; }
+interface Props { onSuccess: (data?: any) => void; onCancel: () => void; initialData?: any; }
 
 export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
@@ -25,8 +25,12 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
   const { data: agents } = useQuery({
     queryKey: ['agents-list'],
     queryFn: async () => {
-      const res = await api.get('/users/agents');
-      return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+      try {
+        const res = await api.get('/users/agents');
+        return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+      } catch (err: any) {
+        return [];
+      }
     }
   });
 
@@ -44,19 +48,20 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
       const payload: any = { ...data };
       if (!payload.referredByAgentId) delete payload.referredByAgentId;
 
+      let responseData;
       if (isEdit) {
-        await api.put(`/sellers/${initialData._id}`, data);
+        responseData = await api.put(`/sellers/${initialData._id}`, data);
       } else {
-        await api.post('/sellers', data);
+        responseData = await api.post('/sellers', data);
       }
-      onSuccess();
+      onSuccess(responseData?.data?.data);
     } catch (err: any) {
       setServerError(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} seller`);
     }
   };
 
   return (
-    <div className="page-wrapper max-w-3xl pb-24 mx-auto pt-6 px-4 sm:px-6">
+    <div className="page-wrapper max-w-3xl mx-auto py-6 px-4 sm:px-6">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onCancel} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors">
           <ArrowLeft size={18} />
@@ -131,8 +136,8 @@ export function CreateSeller({ onSuccess, onCancel, initialData }: Props) {
           </div>
         </div>
 
-        {/* Action Bar (Below Form on Mobile, Sticky Footer on Desktop) */}
-        <div className="sticky-action-bar">
+        {/* Action Bar */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
           <button type="button" onClick={onCancel} className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 sm:border-0 text-center">
             Cancel
           </button>

@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { CurrencyInput } from './CurrencyInput';
 import { LocationSelect } from './LocationSelect';
 import { SegmentedControl, SwitchToggle } from '../ui/FormControls';
 import { PropertyImageUploader, PropertyImage } from './PropertyImageUploader';
+import { CreateSeller } from './CreateSeller';
 
 const schema = z.object({
   propertyType: z.string().min(1, 'Required'),
@@ -35,6 +36,8 @@ interface Props { onSuccess: () => void; onCancel: () => void; initialData?: any
 export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showReferral, setShowReferral] = useState(!!initialData?.referredByAgentId);
+  const [showSellerModal, setShowSellerModal] = useState(false);
+  const qc = useQueryClient();
   const isEdit = !!initialData;
 
   const { data: sellers, isLoading: loadingSellers } = useQuery({
@@ -45,8 +48,12 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
   const { data: agents, isLoading: loadingAgents } = useQuery({
     queryKey: ['agents-list'],
     queryFn: async () => {
-      const res = await api.get('/users/agents');
-      return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+      try {
+        const res = await api.get('/users/agents');
+        return res.data.data.filter((a: any) => a.approvalStatus === 'approved' || !a.approvalStatus);
+      } catch (err: any) {
+        return [];
+      }
     }
   });
 
@@ -55,7 +62,7 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     queryFn: async () => (await api.get('/locations?limit=1000')).data.data,
   });
 
-  const { register, handleSubmit, watch, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
     defaultValues: initialData ? {
       ...initialData,
@@ -69,6 +76,15 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     } : { parkingAvailable: false, sellerId: '', mainDoorDirection: '', yearOfConstruction: '', address: '', location: '', images: [] },
   });
 
+  // React hook form watch side effect for adding new seller
+  const selectedSeller = watch('sellerId');
+  useEffect(() => {
+    if (selectedSeller === 'ADD_NEW_SELLER') {
+      setShowSellerModal(true);
+      setValue('sellerId', '');
+    }
+  }, [selectedSeller, setValue]);
+
   if (loadingSellers || loadingAgents || loadingLocs) {
     return (
       <div className="page-wrapper max-w-2xl flex items-center justify-center py-20">
@@ -77,8 +93,16 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     );
   }
 
-  const selectedSeller = watch('sellerId');
   const watchPropertyType = watch('propertyType');
+
+  const handleSellerCreated = (newSeller: any) => {
+    setShowSellerModal(false);
+    if (newSeller) {
+      qc.invalidateQueries({ queryKey: ['sellers-list'] }).then(() => {
+        setValue('sellerId', newSeller._id);
+      });
+    }
+  };
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -105,7 +129,7 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
   };
 
   return (
-    <div className="page-wrapper max-w-3xl pb-24 mx-auto pt-6 px-4 sm:px-6">
+    <div className="page-wrapper max-w-3xl mx-auto py-6 px-4 sm:px-6">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onCancel} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors">
           <ArrowLeft size={18} />
@@ -297,7 +321,8 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
               <div className="form-group">
                 <label className="form-label">Link Existing Seller</label>
                 <select {...register('sellerId')} className="form-select">
-                  <option value="">-- No Seller Selected (Enter manually below) --</option>
+                  <option value="">-- No Seller Selected --</option>
+                  <option value="ADD_NEW_SELLER" className="font-semibold text-accent">+ Add New Seller</option>
                   {sellers?.map((s: any) => (
                     <option key={s._id} value={s._id}>{s.sellerName} — {s.contactNumber}</option>
                   ))}
@@ -339,8 +364,8 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
           </div>
         </div>
 
-        {/* Action Bar (Below Form on Mobile, Sticky Footer on Desktop) */}
-        <div className="sticky-action-bar">
+        {/* Action Bar */}
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
           <button type="button" onClick={onCancel} className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 sm:border-0 text-center">
             Cancel
           </button>
@@ -349,6 +374,27 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
           </button>
         </div>
       </form>
+      
+      {showSellerModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm">
+          <div className="flex min-h-full items-start justify-center p-4 pt-8 sm:pt-12">
+            <div className="relative w-full max-w-3xl bg-slate-50 rounded-2xl shadow-xl overflow-hidden text-left align-middle transition-all">
+            <button 
+              onClick={() => setShowSellerModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-100 rounded-full shadow-sm transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="p-1">
+              <CreateSeller 
+                onSuccess={handleSellerCreated} 
+                onCancel={() => setShowSellerModal(false)} 
+              />
+            </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
