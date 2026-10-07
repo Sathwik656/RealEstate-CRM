@@ -272,6 +272,38 @@ const clearAllNotifications = async (req, res, next) => {
   }
 };
 
+// ─── POST /api/notifications/fcm-token ───────────────────────────────────────
+
+/**
+ * Register FCM token for Capacitor push notifications (Android/iOS)
+ * Stores the token in the user's fcmTokens array without duplicates
+ */
+const registerFCMToken = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'FCM token is required',
+      });
+    }
+
+    // Add token using $addToSet to prevent duplicates
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { $addToSet: { fcmTokens: token } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'FCM token registered successfully',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getSettings,
   updateSettings,
@@ -281,4 +313,5 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   clearAllNotifications,
+  registerFCMToken,
 };

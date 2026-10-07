@@ -10,6 +10,7 @@ const {
   markAsRead,
   markAllAsRead,
   clearAllNotifications,
+  registerFCMToken,
 } = require('../controllers/notificationController');
 const { auth } = require('../middleware/auth');
 
@@ -36,6 +37,9 @@ router.put('/settings', updateSettings);
 
 // POST /api/notifications/subscribe — register push subscription for current device
 router.post('/subscribe', subscribe);
+
+// POST /api/notifications/fcm-token — register FCM token for Android/iOS
+router.post('/fcm-token', registerFCMToken);
 
 // DELETE /api/notifications/unsubscribe — remove push subscription for current device
 router.delete('/unsubscribe', unsubscribe);
