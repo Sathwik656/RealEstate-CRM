@@ -11,11 +11,15 @@ const {
   markAllAsRead,
   clearAllNotifications,
   registerFCMToken,
+  testNotification,
 } = require('../controllers/notificationController');
 const { auth } = require('../middleware/auth');
 
 // All notification routes require authentication
 router.use(auth);
+
+// POST /api/notifications/test — test FCM notification (Admin only)
+router.post('/test', testNotification);
 
 // GET /api/notifications — get user's notifications
 router.get('/', getNotifications);

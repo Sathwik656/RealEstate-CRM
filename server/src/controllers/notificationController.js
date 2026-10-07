@@ -2,6 +2,7 @@
 const PushSubscription = require('../models/PushSubscription');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendPushNotification } = require('../services/firebaseNotificationService');
 
 // ─── GET /api/notifications/settings ─────────────────────────────────────────
 
@@ -304,6 +305,43 @@ const registerFCMToken = async (req, res, next) => {
   }
 };
 
+// ─── POST /api/notifications/test ────────────────────────────────────────────
+
+/**
+ * Test FCM notification sending
+ */
+const testNotification = async (req, res, next) => {
+  try {
+    const { userId, title, body, data } = req.body;
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can test notifications' });
+    }
+
+    if (!userId || !title || !body) {
+      return res.status(400).json({ success: false, message: 'userId, title, and body are required' });
+    }
+
+    console.log(`FCM test notification requested for User: ${userId}`);
+
+    const result = await sendPushNotification({
+      userIds: [userId],
+      title,
+      body,
+      data
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notification test processed',
+      sent: result.sent,
+      failed: result.failed
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getSettings,
   updateSettings,
@@ -314,4 +352,5 @@ module.exports = {
   markAllAsRead,
   clearAllNotifications,
   registerFCMToken,
+  testNotification,
 };

@@ -2,6 +2,7 @@
 const webpush = require('web-push');
 const PushSubscription = require('../models/PushSubscription');
 const User = require('../models/User');
+const { sendPushNotification } = require('./firebaseNotificationService');
 
 // ─── Initialize Web Push ────────────────────────────────────────────────────────
 
@@ -61,16 +62,39 @@ const sendToSubscription = async (subscription, payload) => {
 // ─── Send Notification to a Single User (All Devices) ────────────────────────────
 
 const sendNotificationToUser = async (userId, payload) => {
+  // 1. Web Push
   const subscriptions = await PushSubscription.find({ userId });
-  if (!subscriptions.length) return { sent: 0, failed: 0 };
+  let webSent = 0;
+  let webFailed = 0;
 
-  const results = await Promise.allSettled(
-    subscriptions.map((sub) => sendToSubscription(sub, payload))
-  );
+  if (subscriptions.length) {
+    const results = await Promise.allSettled(
+      subscriptions.map((sub) => sendToSubscription(sub, payload))
+    );
+    webSent = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+    webFailed = subscriptions.length - webSent;
+  }
 
-  const sent = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
-  const failed = results.length - sent;
-  return { sent, failed };
+  // 2. Firebase FCM Push (never block CRM logic)
+  let fcmSent = 0;
+  let fcmFailed = 0;
+  try {
+    const fcmResult = await sendPushNotification({
+      userIds: [userId],
+      title: payload.title,
+      body: payload.body,
+      data: payload.data
+    });
+    fcmSent = fcmResult.sent;
+    fcmFailed = fcmResult.failed;
+  } catch (e) {
+    console.error('FCM integration error:', e);
+  }
+
+  return { 
+    sent: webSent + fcmSent, 
+    failed: webFailed + fcmFailed 
+  };
 };
 
 // ─── Notify All Eligible Users ───────────────────────────────────────────────────

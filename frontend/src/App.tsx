@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { registerPushNotificationListeners } from '@/lib/capacitorPushNotifications';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
@@ -36,6 +39,20 @@ function App() {
         },
       })
   );
+
+  useEffect(() => {
+    // Only run this on Android/iOS
+    if (Capacitor.isNativePlatform()) {
+      registerPushNotificationListeners();
+
+      // If permission was already granted previously, register right away to receive notifications
+      PushNotifications.checkPermissions().then((status) => {
+        if (status.receive === 'granted') {
+          PushNotifications.register();
+        }
+      });
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

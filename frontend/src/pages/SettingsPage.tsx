@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
-
+import { Capacitor } from '@capacitor/core';
+import { setupCapacitorPushNotifications } from '@/lib/capacitorPushNotifications';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface LocationEntry {
@@ -201,10 +202,12 @@ export default function SettingsPage() {
       // Disable
       setIsSubscribing(true);
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          await subscription.unsubscribe();
+        if (!Capacitor.isNativePlatform()) {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            await subscription.unsubscribe();
+          }
         }
         await api.put('/notifications/settings', { notificationsEnabled: false });
         qc.invalidateQueries({ queryKey: ['notification-settings'] });
@@ -217,34 +220,40 @@ export default function SettingsPage() {
       }
     } else {
       // Enable
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setRowError('Push notifications are not supported by this browser.');
-        return;
-      }
       setIsSubscribing(true);
       try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          setRowError('Notification permission denied by user.');
-          setIsSubscribing(false);
-          return;
-        }
-
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          const publicVapidKey = notifData?.vapidPublicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY;
-          if (!publicVapidKey) {
-            throw new Error('VAPID public key not found');
+        if (Capacitor.isNativePlatform()) {
+          await setupCapacitorPushNotifications();
+          await api.put('/notifications/settings', { notificationsEnabled: true });
+        } else {
+          if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            setRowError('Push notifications are not supported by this browser.');
+            setIsSubscribing(false);
+            return;
           }
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
-          });
-        }
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            setRowError('Notification permission denied by user.');
+            setIsSubscribing(false);
+            return;
+          }
 
-        await api.post('/notifications/subscribe', subscription.toJSON());
+          const registration = await navigator.serviceWorker.ready;
+          let subscription = await registration.pushManager.getSubscription();
+
+          if (!subscription) {
+            const publicVapidKey = notifData?.vapidPublicKey || import.meta.env.VITE_VAPID_PUBLIC_KEY;
+            if (!publicVapidKey) {
+              throw new Error('VAPID public key not found');
+            }
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+            });
+          }
+
+          await api.post('/notifications/subscribe', subscription.toJSON());
+        }
         qc.invalidateQueries({ queryKey: ['notification-settings'] });
         showSuccess('Push notifications enabled for this device');
       } catch (err) {
