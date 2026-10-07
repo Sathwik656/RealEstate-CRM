@@ -3,10 +3,13 @@ docs/*
 # Node modules
 node_modules/
 
-# Environment variables
+# Environment variables & secrets
 .env
 .env.local
 .env.*.local
+google-services.json
+**/google-services.json
+serviceAccountKey*.json
 
 # Build outputs
 dist/
