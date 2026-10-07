@@ -93,7 +93,7 @@ export function PropertyCard({
       <div className="mb-4 mt-auto">
         <div className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1">Price</div>
         <div className="font-display font-semibold text-primary text-lg">
-          ₹{p.price?.toLocaleString('en-IN')}
+          {p.price !== undefined && p.price !== null ? `₹${p.price.toLocaleString('en-IN')}` : <span className="text-sm text-slate-400">Price on Request</span>}
         </div>
       </div>
 

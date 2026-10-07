@@ -15,9 +15,11 @@ const schema = z.object({
   propertyType: z.string().min(1, 'Required'),
   propertyTitle: z.string().min(1, 'Required'),
   purpose: z.string().min(1, 'Required'),
-  price: z.preprocess(Number, z.number().min(0)),
-  area: z.preprocess(Number, z.number().min(0)),
-  bhk: z.preprocess(Number, z.number().min(0)),
+  price: z.preprocess((val) => val === '' || val === null || val === undefined ? null : Number(val), z.number().min(0).nullable().optional()),
+  area: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  areaSqFt: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  areaCents: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  bhk: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
   location: z.string().min(1, 'Required'),
   parkingAvailable: z.boolean().default(false),
   sellerId: z.string().optional(),
@@ -66,6 +68,9 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     resolver: zodResolver(schema) as any,
     defaultValues: initialData ? {
       ...initialData,
+      price: initialData.price ?? '',
+      areaSqFt: initialData.areaSqFt ?? initialData.area ?? '',
+      areaCents: initialData.areaCents ?? (initialData.area ? parseFloat((initialData.area * 0.00229568).toFixed(4)) : ''),
       sellerId: initialData.sellerId?._id || initialData.sellerId || '',
       referredByAgentId: initialData.referredByAgentId?._id || initialData.referredByAgentId || '',
       mainDoorDirection: initialData.mainDoorDirection || '',
@@ -115,6 +120,13 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
       if (!payload.address) delete payload.address;
       if (payload.propertyType && !['Independent House', 'Flat'].includes(payload.propertyType)) {
         payload.bhk = null;
+      }
+      
+      // Sync area field for backward compatibility
+      if (payload.areaSqFt !== undefined) {
+        payload.area = payload.areaSqFt;
+      } else {
+        delete payload.area;
       }
       
       if (isEdit) {
@@ -194,12 +206,52 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                 )}
               />
 
-              <div className="form-group flex flex-col">
+              <div className="form-group flex flex-col md:col-span-2">
                 <label className="form-label">Area</label>
-                <div className="relative flex-1">
-                  <input type="number" {...register('area')} className="form-input pr-12" placeholder="e.g. 1500" />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-slate-400 text-sm">sq ft</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      step="any"
+                      {...register('areaCents', {
+                        onChange: (e) => {
+                          const val = e.target.value;
+                          if (val !== '') {
+                            const sqft = Number(val) * 435.6;
+                            setValue('areaSqFt', parseFloat(sqft.toFixed(2)), { shouldValidate: true });
+                          } else {
+                            setValue('areaSqFt', undefined, { shouldValidate: true });
+                          }
+                        }
+                      })} 
+                      className="form-input pr-16" 
+                      placeholder="e.g. 10" 
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-slate-400 text-sm">Cents</span>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      step="any"
+                      {...register('areaSqFt', {
+                        onChange: (e) => {
+                          const val = e.target.value;
+                          if (val !== '') {
+                            const cents = Number(val) * 0.00229568;
+                            setValue('areaCents', parseFloat(cents.toFixed(4)), { shouldValidate: true });
+                          } else {
+                            setValue('areaCents', undefined, { shouldValidate: true });
+                          }
+                        }
+                      })} 
+                      className="form-input pr-16" 
+                      placeholder="e.g. 4356" 
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-slate-400 text-sm">SqFt</span>
+                    </div>
                   </div>
                 </div>
               </div>

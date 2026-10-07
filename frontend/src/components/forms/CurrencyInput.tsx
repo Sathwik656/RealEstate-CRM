@@ -96,8 +96,8 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       const formatted = toIndianFormat(raw);
       setDisplayVal(formatted);
 
-      const numeric = raw ? Number(raw) : 0;
-      onChange(numeric);
+      const numeric = raw ? Number(raw) : null;
+      onChange(numeric as any);
     };
 
     const wordLabel = value ? toWordLabel(Number(value)) : '';

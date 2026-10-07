@@ -85,8 +85,17 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       min: [0, 'Area cannot be negative'],
     },
+    areaSqFt: {
+      type: Number,
+      min: [0, 'Area cannot be negative'],
+    },
+    areaCents: {
+      type: Number,
+      min: [0, 'Area cannot be negative'],
+    },
     price: {
       type: Number,
+      default: null,
       min: [0, 'Price cannot be negative'],
     },
     bhk: {
