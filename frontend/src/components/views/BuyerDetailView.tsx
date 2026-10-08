@@ -1,6 +1,6 @@
 import {
   ArrowLeft, Edit, User, MapPin, Phone, IndianRupee,
-  Maximize2, BedDouble, Car, Calendar, Tag, Target, Bell, Sparkles, Loader2, Info
+  Maximize2, BedDouble, Car, Calendar, Tag, Target, Bell, Sparkles, Loader2, Info, Trash2
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useState } from 'react';
@@ -14,6 +14,7 @@ interface Props {
   buyer: any;
   onBack: () => void;
   onEdit: () => void;
+  onDelete?: () => void;
 }
 
 function Field({ label, value, mono = false }: { label: string; value?: any; mono?: boolean }) {
@@ -71,16 +72,18 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
   const formatPrice = (n?: number) =>
     n !== undefined && n !== null ? `₹${n.toLocaleString('en-IN')}` : undefined;
 
+  const canManage = user?.role === 'admin' || b.referredByAgentId?._id === user?._id || b.referredByAgentId === user?._id;
+
   return (
     <div className="page-wrapper max-w-4xl">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
           <button onClick={onBack} className="btn-icon hover:text-primary hover:bg-surface-alt flex-shrink-0">
             <ArrowLeft size={18} />
           </button>
-          <div>
-            <h1 className="page-title">{b.buyerName}</h1>
+          <div className="min-w-0">
+            <h1 className="page-title truncate">{b.buyerName}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="font-mono text-xs text-muted">{b.code}</span>
               <span className={statusBadge}>{b.status}</span>
@@ -92,15 +95,26 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
             </div>
           </div>
         </div>
-        <button 
-          onClick={onEdit} 
-          className={clsx(
-            "btn-outline btn-sm items-center gap-1.5 flex-shrink-0",
-            user?.role !== 'admin' ? "hidden lg:flex" : "flex"
-          )}
-        >
-          <Edit size={14} /> Edit
-        </button>
+        {canManage && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={onEdit}
+              className="btn-outline btn-sm items-center gap-1.5"
+              title="Edit buyer"
+            >
+              <Edit size={14} /> <span className="hidden sm:inline">Edit</span>
+            </button>
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="btn-outline btn-sm items-center gap-1.5 text-red-600 hover:border-red-300 hover:bg-red-50"
+                title="Delete buyer"
+              >
+                <Trash2 size={14} /> <span className="hidden sm:inline">Delete</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4 border-b border-border mb-6 mt-6">

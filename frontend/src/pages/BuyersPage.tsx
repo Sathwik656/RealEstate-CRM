@@ -32,9 +32,9 @@ export default function BuyersPage() {
   });
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this buyer?')) return;
-    try { await api.delete(`/buyers/${id}`); refetch(); }
-    catch { alert('Failed to delete buyer'); }
+    if (!window.confirm('Delete this buyer?')) return false;
+    try { await api.delete(`/buyers/${id}`); refetch(); return true; }
+    catch { alert('Failed to delete buyer'); return false; }
   };
 
   if (isCreating || editingItem) {
@@ -53,6 +53,9 @@ export default function BuyersPage() {
         buyer={viewingItem}
         onBack={() => setViewingItem(null)}
         onEdit={() => { setEditingItem(viewingItem); setViewingItem(null); }}
+        onDelete={async () => {
+          if (await handleDelete(viewingItem._id)) setViewingItem(null);
+        }}
       />
     );
   }

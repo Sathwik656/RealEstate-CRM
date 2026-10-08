@@ -33,18 +33,15 @@ export const registerPushNotificationListeners = async () => {
 };
 
 export const setupCapacitorPushNotifications = async () => {
-  // Only run this on actual native platforms (Android/iOS)
-  // This ensures your existing web/Vapid push logic remains unaffected
   if (!Capacitor.isNativePlatform()) {
     console.log('Skipping Capacitor push notifications on web.');
     return;
   }
 
   try {
-    // Request permission to use push notifications
     let permStatus = await PushNotifications.checkPermissions();
 
-    if (permStatus.receive === 'prompt') {
+    if (permStatus.receive !== 'granted') {
       permStatus = await PushNotifications.requestPermissions();
     }
 
@@ -53,7 +50,6 @@ export const setupCapacitorPushNotifications = async () => {
       return;
     }
 
-    // Register with Apple / Google to receive push via APNS/FCM
     await PushNotifications.register();
   } catch (error) {
     console.error('Error setting up push notifications', error);

@@ -67,16 +67,16 @@ export function BuyerCard({ buyer: b, onView, onEdit, onDelete }: any) {
 
       <div className="mt-auto pt-3 border-t border-border flex w-full" onClick={(e) => e.stopPropagation()}>
         <button
-          className="flex-1 flex justify-center items-center py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
+          className="flex-1 flex justify-center items-center py-2.5 sm:py-2 text-muted hover:text-accent hover:bg-accent/10 rounded transition-colors"
           title="View details"
           onClick={onView}
         >
           <Eye size={16} />
         </button>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || b.referredByAgentId?._id === user?._id || b.referredByAgentId === user?._id) && (
           <>
             <button
-              className="flex-1 flex justify-center items-center py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              className="flex-1 flex justify-center items-center py-2.5 sm:py-2 text-muted hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
               title="Edit"
               onClick={onEdit}
             >
@@ -84,7 +84,7 @@ export function BuyerCard({ buyer: b, onView, onEdit, onDelete }: any) {
             </button>
             {onDelete && (
               <button
-                className="flex-1 flex justify-center items-center py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                className="flex-1 flex justify-center items-center py-2.5 sm:py-2 text-muted hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                 title="Delete"
                 onClick={onDelete}
               >

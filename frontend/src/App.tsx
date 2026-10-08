@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { registerPushNotificationListeners } from '@/lib/capacitorPushNotifications';
+import { setupCapacitorPushNotifications, registerPushNotificationListeners } from '@/lib/capacitorPushNotifications';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
@@ -45,12 +45,8 @@ function App() {
     if (Capacitor.isNativePlatform()) {
       registerPushNotificationListeners();
 
-      // If permission was already granted previously, register right away to receive notifications
-      PushNotifications.checkPermissions().then((status) => {
-        if (status.receive === 'granted') {
-          PushNotifications.register();
-        }
-      });
+      // Ask for permission immediately when the app starts
+      setupCapacitorPushNotifications();
     }
   }, []);
 

@@ -75,11 +75,11 @@ export default function PropertyViewPage() {
       property={property}
       onBack={() => navigate('/properties')}
       onEdit={() => {
-        // Only admins can edit from this view
-        if (user?.role === 'admin') {
+        const owner = property.createdByUserId;
+        if (user?.role === 'admin' || owner?._id === user?._id || owner === user?._id) {
           setEditingItem(property);
         } else {
-          alert('Only administrators can edit properties.');
+          alert('Only the listing agent or administrators can edit this property.');
         }
       }}
     />
