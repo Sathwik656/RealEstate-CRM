@@ -10,13 +10,15 @@ import { LocationSelect } from './LocationSelect';
 import { SegmentedControl, SwitchToggle } from '../ui/FormControls';
 import { PropertyImageUploader, PropertyImage } from './PropertyImageUploader';
 import { CreateSeller } from './CreateSeller';
+import { PROPERTY_DIVISIONS, PROPERTY_DIVISIONS_LIST, isBhkApplicable } from '@/lib/propertyConstants';
 
 const schema = z.object({
+  propertyDivision: z.string().min(1, 'Required'),
   propertyType: z.string().min(1, 'Required'),
   propertyTitle: z.string().min(1, 'Required'),
+  propertyDescription: z.string().optional(),
   purpose: z.string().min(1, 'Required'),
   price: z.preprocess((val) => val === '' || val === null || val === undefined ? null : Number(val), z.number().min(0).nullable().optional()),
-  area: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
   areaSqFt: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
   areaCents: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
   bhk: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
@@ -68,6 +70,9 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     resolver: zodResolver(schema) as any,
     defaultValues: initialData ? {
       ...initialData,
+      propertyDivision: initialData.propertyDivision || '',
+      propertyType: initialData.propertyType || '',
+      propertyDescription: initialData.propertyDescription || '',
       price: initialData.price ?? '',
       areaSqFt: initialData.areaSqFt ?? initialData.area ?? '',
       areaCents: initialData.areaCents ?? (initialData.area ? parseFloat((initialData.area * 0.00229568).toFixed(4)) : ''),
@@ -78,9 +83,16 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
       address: initialData.address || '',
       location: initialData.location?._id || initialData.location || '',
       images: initialData.images || [],
-    } : { parkingAvailable: false, sellerId: '', mainDoorDirection: '', yearOfConstruction: '', address: '', location: '', images: [] },
+    } : { 
+      parkingAvailable: false, sellerId: '', mainDoorDirection: '', 
+      yearOfConstruction: '', address: '', location: '', propertyDescription: '', 
+      images: [], propertyDivision: '', propertyType: '',
+      areaSqFt: '', areaCents: '',
+      price: '', bhk: ''
+    },
   });
 
+  // React hook form watch side effect for adding new seller
   // React hook form watch side effect for adding new seller
   const selectedSeller = watch('sellerId');
   useEffect(() => {
@@ -90,6 +102,18 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
     }
   }, [selectedSeller, setValue]);
 
+  const watchPropertyDivision = watch('propertyDivision');
+  const watchPropertyType = watch('propertyType');
+
+  // Reset property type if division changes and current type isn't in new division
+  useEffect(() => {
+    if (watchPropertyDivision && watchPropertyType) {
+      if (!PROPERTY_DIVISIONS[watchPropertyDivision]?.includes(watchPropertyType)) {
+        setValue('propertyType', '');
+      }
+    }
+  }, [watchPropertyDivision, watchPropertyType, setValue]);
+
   if (loadingSellers || loadingAgents || loadingLocs) {
     return (
       <div className="page-wrapper max-w-2xl flex items-center justify-center py-20">
@@ -97,8 +121,6 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
       </div>
     );
   }
-
-  const watchPropertyType = watch('propertyType');
 
   const handleSellerCreated = (newSeller: any) => {
     setShowSellerModal(false);
@@ -118,17 +140,18 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
       if (!payload.mainDoorDirection) delete payload.mainDoorDirection;
       if (!payload.yearOfConstruction) delete payload.yearOfConstruction;
       if (!payload.address) delete payload.address;
-      if (payload.propertyType && !['Independent House', 'Flat'].includes(payload.propertyType)) {
+      if (!payload.propertyDescription) delete payload.propertyDescription;
+      
+      // Clean up area mapping
+      if (payload.areaSqFt !== undefined && payload.areaSqFt !== '') {
+        payload.area = payload.areaSqFt;
+      }
+      
+      // Remove irrelevant fields based on property type
+      if (!isBhkApplicable(payload.propertyType)) {
         payload.bhk = null;
       }
-      
-      // Sync area field for backward compatibility
-      if (payload.areaSqFt !== undefined) {
-        payload.area = payload.areaSqFt;
-      } else {
-        delete payload.area;
-      }
-      
+
       if (isEdit) {
         await api.put(`/properties/${initialData._id}`, payload);
       } else {
@@ -167,16 +190,28 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                 {errors.propertyTitle && <p className="form-error">{errors.propertyTitle.message}</p>}
               </div>
 
+              <div className="form-group md:col-span-2">
+                <label className="form-label">Property Description</label>
+                <textarea {...register('propertyDescription')} className="form-input min-h-[100px]" placeholder="e.g. Beautiful property with great amenities..." />
+                {errors.propertyDescription && <p className="form-error">{errors.propertyDescription.message}</p>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Property Division</label>
+                <select {...register('propertyDivision')} className="form-select">
+                  <option value="">Select Division</option>
+                  {PROPERTY_DIVISIONS_LIST.map(div => <option key={div} value={div}>{div}</option>)}
+                </select>
+                {errors.propertyDivision && <p className="form-error">{errors.propertyDivision.message}</p>}
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Property Type</label>
-                <select {...register('propertyType')} className="form-select">
+                <select {...register('propertyType')} className="form-select" disabled={!watchPropertyDivision}>
                   <option value="">Select Type</option>
-                  <option>Land</option>
-                  <option>Shop</option>
-                  <option>Independent House</option>
-                  <option>Flat</option>
-                  <option>Store</option>
-                  <option>Garage</option>
+                  {watchPropertyDivision && PROPERTY_DIVISIONS[watchPropertyDivision]?.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
                 {errors.propertyType && <p className="form-error">{errors.propertyType.message}</p>}
               </div>
@@ -206,55 +241,55 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
                 )}
               />
 
-              <div className="form-group flex flex-col md:col-span-2">
-                <label className="form-label">Area</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      step="any"
-                      {...register('areaCents', {
-                        onChange: (e) => {
-                          const val = e.target.value;
-                          if (val !== '') {
-                            const sqft = Number(val) * 435.6;
-                            setValue('areaSqFt', parseFloat(sqft.toFixed(2)), { shouldValidate: true });
-                          } else {
-                            setValue('areaSqFt', undefined, { shouldValidate: true });
+                <div className="form-group flex flex-col md:col-span-2">
+                  <label className="form-label">Area</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        step="any"
+                        {...register('areaCents', {
+                          onChange: (e) => {
+                            const val = e.target.value;
+                            if (val !== '') {
+                              const sqft = Number(val) * 435.6;
+                              setValue('areaSqFt', parseFloat(sqft.toFixed(2)), { shouldValidate: true });
+                            } else {
+                              setValue('areaSqFt', '' as any, { shouldValidate: true });
+                            }
                           }
-                        }
-                      })} 
-                      className="form-input pr-16" 
-                      placeholder="e.g. 10" 
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <span className="text-slate-400 text-sm">Cents</span>
+                        })} 
+                        className="form-input pr-16" 
+                        placeholder="e.g. 10" 
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span className="text-slate-400 text-sm">Cents</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      step="any"
-                      {...register('areaSqFt', {
-                        onChange: (e) => {
-                          const val = e.target.value;
-                          if (val !== '') {
-                            const cents = Number(val) * 0.00229568;
-                            setValue('areaCents', parseFloat(cents.toFixed(4)), { shouldValidate: true });
-                          } else {
-                            setValue('areaCents', undefined, { shouldValidate: true });
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        step="any"
+                        {...register('areaSqFt', {
+                          onChange: (e) => {
+                            const val = e.target.value;
+                            if (val !== '') {
+                              const cents = Number(val) * 0.00229568;
+                              setValue('areaCents', parseFloat(cents.toFixed(4)), { shouldValidate: true });
+                            } else {
+                              setValue('areaCents', '' as any, { shouldValidate: true });
+                            }
                           }
-                        }
-                      })} 
-                      className="form-input pr-16" 
-                      placeholder="e.g. 4356" 
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <span className="text-slate-400 text-sm">SqFt</span>
+                        })} 
+                        className="form-input pr-16" 
+                        placeholder="e.g. 4356" 
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span className="text-slate-400 text-sm">SqFt</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
             </div>
           </div>
         </div>
@@ -264,7 +299,7 @@ export function CreateProperty({ onSuccess, onCancel, initialData }: Props) {
           <div className="p-5 sm:p-6">
             <h2 className="form-card-header">Property Specifications</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {(!watchPropertyType || ['Independent House', 'Flat'].includes(watchPropertyType)) && (
+              {isBhkApplicable(watchPropertyType) && (
                 <div className="form-group">
                   <label className="form-label">BHK</label>
                   <input type="number" {...register('bhk')} className="form-input" placeholder="e.g. 2" />

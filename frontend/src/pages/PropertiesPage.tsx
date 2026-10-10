@@ -387,7 +387,7 @@ export default function PropertiesPage() {
                   </td>
                   <td className="font-medium">
                     ₹{p.price?.toLocaleString('en-IN')}
-                    {p.area && <div className="text-xs text-muted">{p.area.toLocaleString()} sqft</div>}
+                    {p.area ? <div className="text-xs text-muted">{p.area.toLocaleString()} sqft</div> : null}
                   </td>
                   <td className="text-muted text-xs truncate max-w-[120px]">
                     {p.location?.location || p.location}

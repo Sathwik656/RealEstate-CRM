@@ -1,14 +1,7 @@
 'use strict';
 const mongoose = require('mongoose');
 
-const PROPERTY_TYPES = [
-  'Land',
-  'Shop',
-  'Independent House',
-  'Flat',
-  'Store',
-  'Garage',
-];
+const Property = require('./Property');
 
 const buyerSchema = new mongoose.Schema(
   {
@@ -41,11 +34,14 @@ const buyerSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    /* Not used currently */
-    propertyTypeInterested: {
+    preferredPropertyDivisions: [{
       type: String,
-      enum: PROPERTY_TYPES,
-    },
+      enum: Property.PROPERTY_DIVISIONS_LIST,
+    }],
+    preferredPropertyTypes: [{
+      type: String,
+      enum: Property.PROPERTY_TYPES_LIST,
+    }],
     purpose: {
       type: String,
       enum: ['Purchase', 'Rent'],
@@ -65,6 +61,14 @@ const buyerSchema = new mongoose.Schema(
       type: Number,
       min: [0, 'Area requirement cannot be negative'],
     },
+    minArea: {
+      type: Number,
+      min: [0, 'Area minimum cannot be negative'],
+    },
+    maxArea: {
+      type: Number,
+      min: [0, 'Area maximum cannot be negative'],
+    },
     bhkRequirement: {
       type: Number,
       enum: [1, 2, 3, 4, 5, null],
@@ -73,11 +77,13 @@ const buyerSchema = new mongoose.Schema(
       validate: {
         validator: function (value) {
           if (value === null || value === undefined) return true;
-          const type = this.propertyTypeInterested || (this.getUpdate && this.getUpdate().$set && this.getUpdate().$set.propertyTypeInterested) || (this.getUpdate && this.getUpdate().propertyTypeInterested);
-          if (!type) return true;
-          return ['Independent House', 'Flat'].includes(type);
+          const types = this.preferredPropertyTypes || (this.getUpdate && this.getUpdate().$set && this.getUpdate().$set.preferredPropertyTypes) || (this.getUpdate && this.getUpdate().preferredPropertyTypes);
+          if (!types || types.length === 0) return true;
+          
+          const allowedTypes = ['Independent House', 'Flat / Apartment', 'Villa', 'Duplex', 'Shop with Residence', 'Commercial Building with Residential Units', 'Farmhouse'];
+          return types.some(t => allowedTypes.includes(t));
         },
-        message: 'BHK requirement can only be set when interested in Independent House and Flat'
+        message: 'BHK requirement can only be set when interested in residential properties'
       }
     },
     parkingRequirement: {

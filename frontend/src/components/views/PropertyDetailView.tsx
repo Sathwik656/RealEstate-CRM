@@ -162,6 +162,7 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
                 <span className={statusBadge}>{p.propertyStatus}</span>
               )}
               {p.purpose && <span className="badge badge-blue">{p.purpose}</span>}
+              {p.propertyDivision && <span className="badge badge-indigo">{p.propertyDivision}</span>}
               {p.propertyType && <span className="badge badge-amber">{p.propertyType}</span>}
             </div>
           </div>
@@ -234,6 +235,7 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
         <Section title="Property Details" icon={Building2}>
           <Field label="Property Title" value={p.propertyTitle} />
           <Field label="Property Code" value={p.code} mono />
+          <Field label="Division" value={p.propertyDivision} />
           <Field label="Type" value={p.propertyType} />
           <Field label="Purpose" value={p.purpose} />
           <Field label="Status" value={p.propertyStatus} />
@@ -243,10 +245,8 @@ function DesktopPropertyDetailView({ property: p, onBack, onEdit, onExpressInter
         {/* Pricing & Size */}
         <Section title="Pricing & Size" icon={IndianRupee}>
           <Field label="Price" value={formatPrice(p.price)} />
-          <Field label="Area" value={p.area ? `${p.area.toLocaleString()} sq ft` : undefined} />
-          {['Independent House', 'Flat'].includes(p.propertyType) && (
-            <Field label="BHK" value={p.bhk ? `${p.bhk} BHK` : undefined} />
-          )}
+          {p.area ? <Field label="Area" value={`${p.area.toLocaleString()} sq ft`} /> : null}
+          {p.bhk ? <Field label="BHK" value={`${p.bhk} BHK`} /> : null}
           <Field label="Year of Construction" value={formatMonth(p.yearOfConstruction)} />
         </Section>
 
@@ -383,8 +383,13 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
               {p.purpose}
             </span>
           )}
+          {p.propertyDivision && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-indigo-100 text-indigo-700">
+              {p.propertyDivision}
+            </span>
+          )}
           {p.propertyType && (
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-slate-100 text-slate-600">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-amber-100 text-amber-700">
               {p.propertyType}
             </span>
           )}
@@ -414,6 +419,10 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Property Details</h2>
           <div className="space-y-2.5">
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+              <span className="text-sm text-slate-500">Division</span>
+              <span className="text-sm font-medium text-slate-900">{p.propertyDivision || '-'}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
               <span className="text-sm text-slate-500">Type</span>
               <span className="text-sm font-medium text-slate-900">{p.propertyType || '-'}</span>
             </div>
@@ -425,6 +434,12 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
               <span className="text-sm text-slate-500">Status</span>
               <span className="text-sm font-medium text-slate-900">{p.propertyStatus || '-'}</span>
             </div>
+            {p.propertyDescription && (
+              <div className="flex flex-col gap-1 pt-1 border-b border-slate-50 last:border-0 pb-2.5">
+                <span className="text-sm text-slate-500">Description</span>
+                <span className="text-sm font-medium text-slate-900 leading-snug">{p.propertyDescription}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -435,10 +450,18 @@ function MobilePropertyDetailView({ property: p, onBack, onEdit, onExpressIntere
               <span className="text-sm text-slate-500">Price</span>
               <span className="text-sm font-medium text-slate-900">{p.price ? `₹${p.price.toLocaleString('en-IN')}` : '-'}</span>
             </div>
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
-              <span className="text-sm text-slate-500">Area</span>
-              <span className="text-sm font-medium text-slate-900">{p.area ? `${p.area} sq ft` : '-'}</span>
-            </div>
+            {p.area ? (
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Area</span>
+                <span className="text-sm font-medium text-slate-900">{`${p.area} sq ft`}</span>
+              </div>
+            ) : null}
+            {p.bhk ? (
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">BHK</span>
+                <span className="text-sm font-medium text-slate-900">{`${p.bhk} BHK`}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
               <span className="text-sm text-slate-500">Built in</span>
               <span className="text-sm font-medium text-slate-900">{formatMonth(p.yearOfConstruction) || '-'}</span>

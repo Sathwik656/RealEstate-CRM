@@ -74,14 +74,14 @@ export function PropertyCard({
       </div>
 
       <div className="flex items-center gap-3 text-xs mb-3">
-        <div className="flex items-center gap-1 text-muted">
-          <Tag size={12} /> {p.propertyType} {p.purpose ? `· ${p.purpose}` : ''}
+        <div className="flex items-center gap-1 text-muted truncate">
+          <Tag size={12} className="shrink-0" /> <span className="truncate">{p.propertyType}</span> {p.purpose ? `· ${p.purpose}` : ''}
         </div>
-        {p.area && (
-          <div className="flex items-center gap-1 text-muted">
+        {p.area ? (
+          <div className="flex items-center gap-1 text-muted shrink-0">
             <Square size={12} /> {p.area.toLocaleString()} sqft
           </div>
-        )}
+        ) : null}
       </div>
 
       {p.referredByAgentId?.name && (

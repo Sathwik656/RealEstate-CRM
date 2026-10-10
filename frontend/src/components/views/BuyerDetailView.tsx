@@ -45,7 +45,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
   );
 }
 
-function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
+function DesktopBuyerDetailView({ buyer: b, onBack, onEdit, onDelete }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'details' | 'matches'>('details');
@@ -161,9 +161,10 @@ function DesktopBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
         <Section title="Property Requirements" icon={Target}>
           <Field label="Purpose" value={b.purpose} />
           <Field label="Preferred Location" value={b.preferredLocation} />
-          <Field label="Property Type Interested" value={b.propertyTypeInterested} />
-          <Field label="BHK Requirement" value={b.bhkRequirement ? `${b.bhkRequirement} BHK` : undefined} />
-          <Field label="Area Requirement" value={b.areaRequirement ? `${b.areaRequirement.toLocaleString()} sq ft` : undefined} />
+          <Field label="Preferred Divisions" value={b.preferredPropertyDivisions?.join(', ')} />
+          <Field label="Preferred Types" value={b.preferredPropertyTypes?.join(', ')} />
+          {b.bhkRequirement ? <Field label="BHK Requirement" value={`${b.bhkRequirement} BHK`} /> : null}
+          {b.minArea || b.maxArea ? <Field label="Area Requirement" value={`${b.minArea || 0} - ${b.maxArea || 'Any'} sq ft`} /> : null}
           <Field label="Parking Requirement" value={b.parkingRequirement} />
         </Section>
 
@@ -344,17 +345,25 @@ function MobileBuyerDetailView({ buyer: b, onBack, onEdit }: Props) {
               <span className="text-sm font-medium text-slate-900">{b.preferredLocation || '-'}</span>
             </div>
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
-              <span className="text-sm text-slate-500">Type</span>
-              <span className="text-sm font-medium text-slate-900">{b.propertyTypeInterested || '-'}</span>
+              <span className="text-sm text-slate-500">Divisions</span>
+              <span className="text-sm font-medium text-slate-900 text-right">{b.preferredPropertyDivisions?.join(', ') || '-'}</span>
             </div>
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
-              <span className="text-sm text-slate-500">BHK</span>
-              <span className="text-sm font-medium text-slate-900">{b.bhkRequirement ? `${b.bhkRequirement} BHK` : '-'}</span>
+              <span className="text-sm text-slate-500">Types</span>
+              <span className="text-sm font-medium text-slate-900 text-right max-w-[60%] line-clamp-2">{b.preferredPropertyTypes?.join(', ') || '-'}</span>
             </div>
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
-              <span className="text-sm text-slate-500">Area</span>
-              <span className="text-sm font-medium text-slate-900">{b.areaRequirement ? `${b.areaRequirement.toLocaleString()} sq ft` : '-'}</span>
-            </div>
+            {b.bhkRequirement ? (
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">BHK</span>
+                <span className="text-sm font-medium text-slate-900">{`${b.bhkRequirement} BHK`}</span>
+              </div>
+            ) : null}
+            {b.minArea || b.maxArea ? (
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
+                <span className="text-sm text-slate-500">Area</span>
+                <span className="text-sm font-medium text-slate-900">{`${b.minArea || 0} - ${b.maxArea || 'Any'} sq ft`}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between items-center pb-2.5 border-b border-slate-50 last:border-0">
               <span className="text-sm text-slate-500">Parking</span>
               <span className="text-sm font-medium text-slate-900">{b.parkingRequirement || '-'}</span>

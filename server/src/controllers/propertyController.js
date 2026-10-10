@@ -14,12 +14,15 @@ const exceljs = require('exceljs');
 // ─── Validation Rules ─────────────────────────────────────────────────────────
 
 const propertyValidation = [
+  body('propertyDivision')
+    .notEmpty()
+    .withMessage('Property division is required')
+    .isIn(Property.PROPERTY_DIVISIONS_LIST)
+    .withMessage('Invalid property division'),
   body('propertyType')
     .notEmpty()
     .withMessage('Property type is required')
-    .isIn([
-      'Land', 'Shop', 'Independent House', 'Flat', 'Store', 'Garage'
-    ])
+    .isIn(Property.PROPERTY_TYPES_LIST)
     .withMessage('Invalid property type'),
   body('propertyTitle').trim().notEmpty().withMessage('Property title is required'),
   body('purpose')
@@ -39,7 +42,7 @@ const propertyValidation = [
  */
 const buildPropertyFilter = async (req) => {
   const {
-    status, type, purpose,
+    status, type, division, purpose,
     location, locationCode, minPrice, maxPrice, bhk, parking,
   } = req.query;
 
@@ -49,6 +52,7 @@ const buildPropertyFilter = async (req) => {
     filter.propertyStatus = status;
   }
 
+  if (division) filter.propertyDivision = division;
   if (type) filter.propertyType = type;
   if (purpose) filter.purpose = purpose;
   
@@ -606,6 +610,7 @@ const exportProperties = async (req, res, next) => {
     worksheet.columns = [
       { header: 'Property Code', key: 'code', width: 20 },
       { header: 'Property Title', key: 'propertyTitle', width: 30 },
+      { header: 'Division', key: 'propertyDivision', width: 15 },
       { header: 'Type', key: 'propertyType', width: 15 },
       { header: 'Purpose', key: 'purpose', width: 10 },
       { header: 'Status', key: 'propertyStatus', width: 15 },
@@ -627,6 +632,7 @@ const exportProperties = async (req, res, next) => {
       worksheet.addRow({
         code: p.code || '',
         propertyTitle: p.propertyTitle || '',
+        propertyDivision: p.propertyDivision || '',
         propertyType: p.propertyType || '',
         purpose: p.purpose || '',
         propertyStatus: p.propertyStatus || '',

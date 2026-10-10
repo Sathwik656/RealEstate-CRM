@@ -15,9 +15,14 @@ const calculateMatchPercentage = (buyer, property) => {
     if (property.purpose === buyer.purpose) score += 30;
   }
   
-  if (buyer.propertyTypeInterested) {
-    maxPossible += 25;
-    if (property.propertyType === buyer.propertyTypeInterested) score += 25;
+  if (buyer.preferredPropertyDivisions && buyer.preferredPropertyDivisions.length > 0) {
+    maxPossible += 10;
+    if (buyer.preferredPropertyDivisions.includes(property.propertyDivision)) score += 10;
+  }
+  
+  if (buyer.preferredPropertyTypes && buyer.preferredPropertyTypes.length > 0) {
+    maxPossible += 15;
+    if (buyer.preferredPropertyTypes.includes(property.propertyType)) score += 15;
   }
   
   if (buyer.preferredLocation) {
@@ -45,8 +50,20 @@ const calculateMatchPercentage = (buyer, property) => {
   }
   
   if (buyer.areaRequirement) {
-    maxPossible += 5;
-    if (property.area && property.area >= buyer.areaRequirement) score += 5;
+    if (property.area !== undefined && property.area !== null) {
+      maxPossible += 5;
+      if (property.area >= buyer.areaRequirement) score += 5;
+    }
+  }
+
+  if (buyer.minArea || buyer.maxArea) {
+    if (property.area !== undefined && property.area !== null) {
+      maxPossible += 5;
+      let areaScore = 5;
+      if (buyer.minArea && property.area < buyer.minArea) areaScore = 0;
+      if (buyer.maxArea && property.area > buyer.maxArea) areaScore = 0;
+      score += areaScore;
+    }
   }
   
   return maxPossible > 0 ? Math.round((score / maxPossible) * 100) : 0;

@@ -20,6 +20,8 @@ const buyerValidation = [
     .optional()
     .isNumeric()
     .withMessage('Budget min must be a number'),
+  body('preferredPropertyDivisions').optional().isArray().withMessage('Must be an array'),
+  body('preferredPropertyTypes').optional().isArray().withMessage('Must be an array'),
   body('note').optional().trim(),
   body('purpose')
     .notEmpty()

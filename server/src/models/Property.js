@@ -1,14 +1,16 @@
 'use strict';
 const mongoose = require('mongoose');
 
-const PROPERTY_TYPES = [
-  'Land',
-  'Shop',
-  'Independent House',
-  'Flat',
-  'Store',
-  'Garage'
-];
+const PROPERTY_DIVISIONS = {
+  'Residential': ['Independent House', 'Villa', 'Flat / Apartment', 'Duplex', 'Residential Land / Plot'],
+  'Commercial': ['Shop', 'Showroom', 'Office Space', 'Commercial Building', 'Hotel', 'Restaurant', 'Commercial Land'],
+  'Industrial': ['Factory', 'Manufacturing Unit', 'Warehouse', 'Industrial Shed', 'Industrial Land'],
+  'Agricultural': ['Agricultural Land', 'Plantation', 'Paddy Field', 'Orchard', 'Farmhouse'],
+  'Mixed-Use': ['Shop with Residence', 'Commercial Building with Residential Units']
+};
+
+const PROPERTY_DIVISIONS_LIST = Object.keys(PROPERTY_DIVISIONS);
+const PROPERTY_TYPES_LIST = Object.values(PROPERTY_DIVISIONS).flat();
 
 const propertySchema = new mongoose.Schema(
   {
@@ -28,9 +30,15 @@ const propertySchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    propertyDivision: {
+      type: String,
+      enum: PROPERTY_DIVISIONS_LIST,
+      required: [true, 'Property division is required'],
+      index: true,
+    },
     propertyType: {
       type: String,
-      enum: PROPERTY_TYPES,
+      enum: PROPERTY_TYPES_LIST,
       required: [true, 'Property type is required'],
       index: true,
     },
@@ -148,4 +156,6 @@ propertySchema.index({ price: 1 });
 propertySchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Property', propertySchema);
-module.exports.PROPERTY_TYPES = PROPERTY_TYPES;
+module.exports.PROPERTY_DIVISIONS = PROPERTY_DIVISIONS;
+module.exports.PROPERTY_DIVISIONS_LIST = PROPERTY_DIVISIONS_LIST;
+module.exports.PROPERTY_TYPES_LIST = PROPERTY_TYPES_LIST;

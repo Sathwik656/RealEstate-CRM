@@ -8,24 +8,20 @@ import { ArrowLeft } from 'lucide-react';
 import { CurrencyInput } from './CurrencyInput';
 import { SegmentedControl } from '../ui/FormControls';
 
-const PROPERTY_TYPES = [
-  'Land',
-  'Shop',
-  'Independent House',
-  'Flat',
-  'Store',
-  'Garage',
-];
+import { PROPERTY_DIVISIONS, PROPERTY_DIVISIONS_LIST } from '@/lib/propertyConstants';
 
 const schema = z.object({
   buyerName: z.string().min(1, 'Required'),
   contactNumber: z.string().min(10, 'Min 10 digits'),
   preferredLocation: z.string().min(1, 'Required'),
-  propertyTypeInterested: z.string().optional(),
+  preferredPropertyDivisions: z.array(z.string()).optional(),
+  preferredPropertyTypes: z.array(z.string()).optional(),
   purpose: z.enum(['Purchase', 'Rent']),
-  budgetMax: z.preprocess(Number, z.number().min(0)),
-  bhkRequirement: z.preprocess(Number, z.number().min(1)),
-  areaRequirement: z.preprocess(Number, z.number().min(0)),
+  budgetMin: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  budgetMax: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  bhkRequirement: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(1).optional()),
+  minArea: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
+  maxArea: z.preprocess((val) => val === '' || val === null || val === undefined ? undefined : Number(val), z.number().min(0).optional()),
   status: z.enum(['Active', 'Closed']),
   note: z.string().optional(),
   referredByAgentId: z.string().optional(),
@@ -49,23 +45,31 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
     }
   });
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, control, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
     defaultValues: initialData ? { 
       ...initialData,
+      preferredPropertyDivisions: initialData.preferredPropertyDivisions || [],
+      preferredPropertyTypes: initialData.preferredPropertyTypes || [],
       referredByAgentId: initialData.referredByAgentId?._id || initialData.referredByAgentId || '',
       reminderDate: initialData.reminderDate ? new Date(initialData.reminderDate).toISOString().slice(0, 16) : '',
-    } : { status: 'Active', purpose: 'Purchase' },
+    } : { status: 'Active', purpose: 'Purchase', preferredPropertyDivisions: [], preferredPropertyTypes: [] },
   });
+
+  const watchPropertyDivisions = watch('preferredPropertyDivisions') || [];
+  const watchPropertyTypes = watch('preferredPropertyTypes') || [];
+  
+  const isResidentialSelected = watchPropertyTypes.some(t => ['Independent House', 'Flat / Apartment', 'Villa', 'Duplex', 'Shop with Residence', 'Commercial Building with Residential Units', 'Farmhouse'].includes(t));
 
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError(null);
       const payload: any = { ...data };
       if (!payload.referredByAgentId) delete payload.referredByAgentId;
-      if (!payload.propertyTypeInterested) delete payload.propertyTypeInterested;
       if (!enableReminder) payload.reminderDate = null;
       else if (!payload.reminderDate) delete payload.reminderDate;
+
+      if (!isResidentialSelected) payload.bhkRequirement = null;
 
       if (isEdit) {
         await api.put(`/buyers/${initialData._id}`, payload);
@@ -142,17 +146,56 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                 <input {...register('preferredLocation')} className="form-input" placeholder="e.g. Juhu" />
                 {errors.preferredLocation && <p className="form-error">{errors.preferredLocation.message}</p>}
               </div>
-              <div className="form-group">
-                <label className="form-label">Property Type</label>
-                <select {...register('propertyTypeInterested')} className="form-select">
-                  <option value="">Any Type</option>
-                  {PROPERTY_TYPES.map(pt => (
-                    <option key={pt} value={pt}>{pt}</option>
+              <div className="form-group md:col-span-2">
+                <label className="form-label mb-2">Preferred Property Divisions</label>
+                <div className="flex flex-wrap gap-2">
+                  {PROPERTY_DIVISIONS_LIST.map(div => (
+                    <label key={div} className={`cursor-pointer px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${watchPropertyDivisions.includes(div) ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      <input 
+                        type="checkbox" 
+                        value={div} 
+                        className="sr-only"
+                        {...register('preferredPropertyDivisions')} 
+                      />
+                      {div}
+                    </label>
                   ))}
-                </select>
-                {errors.propertyTypeInterested && <p className="form-error">{errors.propertyTypeInterested.message}</p>}
+                </div>
               </div>
+
+              {watchPropertyDivisions.length > 0 && (
+                <div className="form-group md:col-span-2">
+                  <label className="form-label mb-2">Preferred Property Types</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {watchPropertyDivisions.flatMap(div => PROPERTY_DIVISIONS[div] || []).map(type => (
+                      <label key={type} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          value={type} 
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          {...register('preferredPropertyTypes')} 
+                        />
+                        <span className="truncate">{type}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               
+              <Controller
+                name="budgetMin"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="budgetMin"
+                    label="Min Budget"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.budgetMin?.message}
+                  />
+                )}
+              />
               <Controller
                 name="budgetMax"
                 control={control}
@@ -167,18 +210,19 @@ export function CreateBuyer({ onSuccess, onCancel, initialData }: Props) {
                   />
                 )}
               />
-              <div className="form-group">
-                <label className="form-label">BHK Requirement</label>
-                <input type="number" {...register('bhkRequirement')} className="form-input" placeholder="e.g. 3" />
-                {errors.bhkRequirement && <p className="form-error">{errors.bhkRequirement.message}</p>}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Area</label>
-                <div className="relative">
-                  <input type="number" {...register('areaRequirement')} className="form-input pr-12" placeholder="e.g. 1500" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">sq ft</span>
+              {(!watchPropertyTypes.length || isResidentialSelected) && (
+                <div className="form-group">
+                  <label className="form-label">BHK Requirement</label>
+                  <input type="number" {...register('bhkRequirement')} className="form-input" placeholder="e.g. 3" />
+                  {errors.bhkRequirement && <p className="form-error">{errors.bhkRequirement.message}</p>}
                 </div>
-                {errors.areaRequirement && <p className="form-error">{errors.areaRequirement.message}</p>}
+              )}
+              <div className="form-group flex flex-col md:col-span-2">
+                <label className="form-label">Area Requirement (sq ft)</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="number" {...register('minArea')} className="form-input" placeholder="Min" />
+                  <input type="number" {...register('maxArea')} className="form-input" placeholder="Max" />
+                </div>
               </div>
               <div className="form-group md:col-span-2">
                 <label className="form-label">Note (Optional)</label>
