@@ -155,7 +155,7 @@ const sendNotificationToUser = async (userId, payload) => {
   } catch (error) {
     console.error(
       `[Notify] FCM integration failed for user ${String(userId)}:`,
-      error.message
+      error.stack || error
     );
 
     fcmFailed += 1;
