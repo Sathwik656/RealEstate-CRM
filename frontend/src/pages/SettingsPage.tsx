@@ -462,11 +462,15 @@ export default function SettingsPage() {
           ) : (
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-primary">Browser Push Notifications</h3>
-                <p className="text-xs text-muted mt-1 max-w-md">
-                  Enable this to receive alerts directly to this device when properties are created.
-                  You have {notifData?.subscriptionCount || 0} active device(s) subscribed.
-                </p>
+                <h3 className="text-sm font-medium text-primary">
+                  {Capacitor.isNativePlatform() ? 'Turn On notifications' : 'Browser Push Notifications'}
+                </h3>
+                {!Capacitor.isNativePlatform() && (
+                  <p className="text-xs text-muted mt-1 max-w-md">
+                    Enable this to receive alerts directly to this device when properties are created.
+                    You have {notifData?.subscriptionCount || 0} active device(s) subscribed.
+                  </p>
+                )}
                 {rowError && !addingNew && !editingId && (
                   <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
                     <AlertCircle size={12} /> {rowError}
