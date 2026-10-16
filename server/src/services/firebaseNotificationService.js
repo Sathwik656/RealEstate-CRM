@@ -50,23 +50,30 @@ const isInvalidTokenError = (code) =>
  * Send FCM notifications to registered devices belonging to userIds.
  * Never log registration-token values.
  */
-const sendPushNotification = async ({
-    userIds,
-    title,
-    body,
-    data,
-}) => {
-    if (!userIds || userIds.length === 0) {
-        console.warn('[FCM] No recipient user IDs supplied.');
+const sendPushNotification = async (options = {}) => {
+    const {
+        userIds = [],
+        title = '',
+        body = '',
+        data,
+    } = options || {};
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+        console.error(
+            '[FCM] Invalid or missing userIds. Cannot send notification.',
+            {
+                hasOptions: Boolean(options),
+                userIdsType: typeof userIds,
+            }
+        );
 
         return {
             sent: 0,
             failed: 0,
             skipped: true,
-            reason: 'no-recipients',
+            reason: 'invalid-or-empty-userIds',
         };
     }
-
     if (!admin.apps.length) {
         console.error(
             '[FCM] Send skipped: Firebase Admin is not initialized.'
