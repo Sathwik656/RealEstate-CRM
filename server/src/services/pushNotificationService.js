@@ -1,29 +1,39 @@
+
 'use strict';
+
 const webpush = require('web-push');
 const PushSubscription = require('../models/PushSubscription');
 const User = require('../models/User');
-const { sendPushNotification } = require('./firebaseNotificationService');
-
-// ─── Initialize Web Push ────────────────────────────────────────────────────────
-
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@veenucrm.com';
-
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-  console.log('Web Push VAPID configured successfully');
-} else {
-  console.warn('VAPID keys not configured — push notifications will not work');
-}
-
+const {
+  sendPushNotification,
+} = require('./firebaseNotificationService');
 const Notification = require('../models/Notification');
 
-// ─── Save Notification to DB ────────────────────────────────────────────────────
+// Initialize Web Push.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT =
+  process.env.VAPID_SUBJECT || 'mailto:admin@veenucrm.com';
 
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    VAPID_SUBJECT,
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+  );
+
+  console.log('[WebPush] VAPID configured.');
+} else {
+  console.warn(
+    '[WebPush] VAPID keys missing; browser push is disabled.'
+  );
+}
+
+// Save in-app notifications.
 const saveToDb = async (userIds, payload, type) => {
-  if (!userIds || !userIds.length) return;
-  const dbNotifications = userIds.map((userId) => ({
+  if (!userIds?.length) return;
+
+  const docs = userIds.map((userId) => ({
     recipient: userId,
     title: payload.title,
     body: payload.body,
@@ -31,13 +41,23 @@ const saveToDb = async (userIds, payload, type) => {
     url: payload.data?.url || '/',
     type,
   }));
-  await Notification.insertMany(dbNotifications).catch((e) => console.error('DB Notification save error:', e));
+
+  try {
+    await Notification.insertMany(docs);
+  } catch (error) {
+    console.error(
+      '[Notify] Failed to save in-app notifications:',
+      error.message
+    );
+  }
 };
 
-// ─── Send Notification to a Single Subscription ─────────────────────────────────
-
+// Send a Web Push notification to one browser subscription.
 const sendToSubscription = async (subscription, payload) => {
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return false;
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    return false;
+  }
+
   try {
     await webpush.sendNotification(
       {
@@ -49,248 +69,475 @@ const sendToSubscription = async (subscription, payload) => {
       },
       JSON.stringify(payload)
     );
+
     return true;
-  } catch (err) {
-    if (err.statusCode === 410 || err.statusCode === 404) {
-      await PushSubscription.findByIdAndDelete(subscription._id);
+  } catch (error) {
+    if (error.statusCode === 410 || error.statusCode === 404) {
+      try {
+        await PushSubscription.findByIdAndDelete(subscription._id);
+      } catch (cleanupError) {
+        console.error(
+          '[WebPush] Failed to remove expired subscription:',
+          cleanupError.message
+        );
+      }
+
       return false;
     }
+
+    console.error(
+      '[WebPush] Delivery failed:',
+      error.statusCode || '',
+      error.message
+    );
+
     return false;
   }
 };
 
-// ─── Send Notification to a Single User (All Devices) ────────────────────────────
-
+/**
+ * Send Web Push and FCM notifications to one user.
+ * FCM delivery does not depend on notificationsEnabled.
+ */
 const sendNotificationToUser = async (userId, payload) => {
-  // 1. Web Push (browser subscribers only)
-  const subscriptions = await PushSubscription.find({ userId });
   let webSent = 0;
   let webFailed = 0;
-
-  if (subscriptions.length) {
-    const results = await Promise.allSettled(
-      subscriptions.map((sub) => sendToSubscription(sub, payload))
-    );
-    webSent = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
-    webFailed = subscriptions.length - webSent;
-  }
-
-  // 2. Firebase FCM Push — always attempt regardless of notificationsEnabled.
-  //    Having a token stored IS the opt-in signal for mobile; notificationsEnabled
-  //    only reflects the web push subscription state and must not gate FCM.
   let fcmSent = 0;
   let fcmFailed = 0;
+
+  // 1. Browser/Web Push.
   try {
-    const fcmResult = await sendPushNotification({
+    const subscriptions = await PushSubscription.find({ userId });
+
+    const webResults = await Promise.allSettled(
+      subscriptions.map((subscription) =>
+        sendToSubscription(subscription, payload)
+      )
+    );
+
+    webResults.forEach((result) => {
+      if (
+        result.status === 'fulfilled' &&
+        result.value === true
+      ) {
+        webSent += 1;
+      } else {
+        webFailed += 1;
+      }
+    });
+  } catch (error) {
+    console.error(
+      `[Notify] Web Push lookup failed for user ${String(userId)}:`,
+      error.message
+    );
+
+    webFailed += 1;
+  }
+
+  // 2. Firebase Cloud Messaging.
+  try {
+    const result = await sendPushNotification({
       userIds: [userId],
       title: payload.title,
       body: payload.body,
-      data: payload.data
+      data: payload.data,
     });
-    fcmSent = fcmResult.sent;
-    fcmFailed = fcmResult.failed;
-  } catch (e) {
-    console.error('FCM integration error:', e);
+
+    fcmSent = result.sent || 0;
+    fcmFailed = result.failed || 0;
+
+    if (result.skipped) {
+      console.warn(
+        `[Notify] FCM skipped for user ${String(userId)}: ` +
+        `${result.reason || 'unknown reason'}.`
+      );
+    }
+  } catch (error) {
+    console.error(
+      `[Notify] FCM integration failed for user ${String(userId)}:`,
+      error.message
+    );
+
+    fcmFailed += 1;
   }
 
   return {
     sent: webSent + fcmSent,
-    failed: webFailed + fcmFailed
+    failed: webFailed + fcmFailed,
+    webSent,
+    webFailed,
+    fcmSent,
+    fcmFailed,
   };
 };
 
-// ─── Notify All Eligible Users ───────────────────────────────────────────────────
-
+// Notify all non-creator users when a property is created.
 const notifyAllEligibleAgents = async (property, excludeUserId) => {
   try {
-    // Fetch all users except the creator so we can:
-    //   a) save in-app notifications for everyone
-    //   b) send web push to those who opted in via browser
-    //   c) send FCM to those who have a registered device token
-    const allUsers = await User.find({ _id: { $ne: excludeUserId } })
-      .select('_id notificationsEnabled fcmTokens');
+    const userFilter = excludeUserId
+      ? { _id: { $ne: excludeUserId } }
+      : {};
 
-    if (!allUsers.length) return;
+    const allUsers = await User.find(userFilter).select(
+      '_id notificationsEnabled fcmTokens'
+    );
+
+    console.log(
+      `[Notify] Property-created event: ${allUsers.length} ` +
+      'non-creator user(s) considered.'
+    );
+
+    if (!allUsers.length) {
+      console.warn('[Notify] No users eligible for notification.');
+
+      return {
+        sent: 0,
+        failed: 0,
+        recipients: 0,
+      };
+    }
 
     const locationName = property.location?.location || '';
     const locationCode = property.location?.code || '';
-    const locationDisplay = locationCode ? `${locationName} (${locationCode})` : locationName;
-    const priceDisplay = property.price ? `₹${property.price.toLocaleString('en-IN')}` : '';
+
+    const locationDisplay = locationCode
+      ? `${locationName} (${locationCode})`
+      : locationName;
+
+    const priceDisplay = property.price
+      ? `₹${Number(property.price).toLocaleString('en-IN')}`
+      : '';
+
+    const propertyId =
+      property.code ||
+      property.propertyId ||
+      String(property._id || '');
 
     const payload = {
       title: 'New Property Listed',
-      body: [property.propertyTitle, locationDisplay, priceDisplay].filter(Boolean).join(' · '),
+      body: [
+        property.propertyTitle,
+        locationDisplay,
+        priceDisplay,
+      ].filter(Boolean).join(' · '),
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: {
-        propertyCode: property.code || property.propertyId,
-        url: `/properties/${property.code || property.propertyId}`,
+        propertyCode: propertyId,
+        url: `/properties/${propertyId}`,
       },
     };
 
-    // ── 1. Save in-app notifications for ALL eligible users ──────────────────
-    await saveToDb(allUsers.map(u => u._id), payload, 'PROPERTY_CREATED');
-    console.log(`[Notify] In-app notifications saved for ${allUsers.length} user(s).`);
-
-    // ── 2. Web push — only for users who explicitly subscribed via browser ───
-    const webPushUsers = allUsers.filter(u => u.notificationsEnabled);
-    console.log(`[Notify] Sending web push to ${webPushUsers.length} subscribed user(s).`);
-
-    // ── 3. FCM — for all users who have a device token (Android opt-in) ──────
-    //    This is the group that was previously being silently skipped because
-    //    their notificationsEnabled flag was never set to true (web push only).
-    const fcmUsers = allUsers.filter(u => u.fcmTokens && u.fcmTokens.length > 0);
-    console.log(`[Notify] Sending FCM push to ${fcmUsers.length} device(s).`);
-
-    // Deduplicate: if a user has both web push AND FCM, sendNotificationToUser
-    // handles both channels in one call, so merge the sets and call once.
-    const combinedUserIds = new Set([
-      ...webPushUsers.map(u => u._id.toString()),
-      ...fcmUsers.map(u => u._id.toString()),
-    ]);
-
-    const pushTargets = allUsers.filter(u => combinedUserIds.has(u._id.toString()));
-
-    const results = await Promise.allSettled(
-      pushTargets.map((user) => sendNotificationToUser(user._id, payload))
+    // Save in-app notifications independently of push eligibility.
+    await saveToDb(
+      allUsers.map((user) => user._id),
+      payload,
+      'PROPERTY_CREATED'
     );
 
-    const totalSent = results.reduce((acc, r) => acc + (r.value?.sent || 0), 0);
-    const totalFailed = results.reduce((acc, r) => acc + (r.value?.failed || 0), 0);
-    console.log(`[Notify] Property notification complete — sent: ${totalSent}, failed: ${totalFailed}.`);
+    console.log(
+      `[Notify] In-app notifications attempted for ${allUsers.length} user(s).`
+    );
 
-  } catch (err) {
-    console.error('[Notify] Error in notifyAllEligibleAgents:', err);
+    // Browser subscribers.
+    const webPushUsers = allUsers.filter(
+      (user) => user.notificationsEnabled
+    );
+
+    // Android/iOS users with stored FCM device tokens.
+    const fcmUsers = allUsers.filter(
+      (user) =>
+        Array.isArray(user.fcmTokens) &&
+        user.fcmTokens.length > 0
+    );
+
+    // Deduplicate users who have both delivery methods.
+    const targetIds = new Set([
+      ...webPushUsers.map((user) => String(user._id)),
+      ...fcmUsers.map((user) => String(user._id)),
+    ]);
+
+    const pushTargets = allUsers.filter(
+      (user) => targetIds.has(String(user._id))
+    );
+
+    console.log(
+      `[Notify] Eligible recipients: ${pushTargets.length}; ` +
+      `web opted-in: ${webPushUsers.length}; ` +
+      `users with FCM tokens: ${fcmUsers.length}.`
+    );
+
+    if (!pushTargets.length) {
+      console.warn(
+        '[Notify] In-app notification saved, but no users have ' +
+        'eligible Web Push subscriptions or FCM tokens.'
+      );
+
+      return {
+        sent: 0,
+        failed: 0,
+        recipients: 0,
+      };
+    }
+
+    const results = await Promise.allSettled(
+      pushTargets.map((user) =>
+        sendNotificationToUser(user._id, payload)
+      )
+    );
+
+    let sent = 0;
+    let failed = 0;
+
+    results.forEach((result, index) => {
+      const recipientId = String(pushTargets[index]._id);
+
+      if (result.status === 'fulfilled') {
+        sent += result.value.sent;
+        failed += result.value.failed;
+
+        console.log(
+          `[Notify] Recipient ${recipientId}: ` +
+          `sent=${result.value.sent}, ` +
+          `failed=${result.value.failed}, ` +
+          `FCM sent=${result.value.fcmSent}, ` +
+          `FCM failed=${result.value.fcmFailed}.`
+        );
+      } else {
+        failed += 1;
+
+        console.error(
+          `[Notify] Push workflow rejected for recipient ${recipientId}:`,
+          result.reason?.message || result.reason
+        );
+      }
+    });
+
+    console.log(
+      `[Notify] Property notification complete — ` +
+      `recipients: ${pushTargets.length}, sent: ${sent}, failed: ${failed}.`
+    );
+
+    return {
+      sent,
+      failed,
+      recipients: pushTargets.length,
+    };
+  } catch (error) {
+    console.error(
+      '[Notify] Error in notifyAllEligibleAgents:',
+      error.message
+    );
+
+    return {
+      sent: 0,
+      failed: 1,
+      error: error.message,
+    };
   }
 };
 
-// ─── Specific Notification Helpers ──────────────────────────────────────────────
-
-
+// Notify admins when an agent expresses interest in a property.
 const notifyAgentInterested = async (property, agent) => {
   try {
-    const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
+    const admins = await User.find({ role: 'admin' }).select(
+      '_id fcmTokens'
+    );
+
     if (!admins.length) return;
 
     const payload = {
       title: 'New Property Interest',
-      body: `${agent.name || agent.email} is interested in ${property.propertyTitle} (${property.code || property.propertyId})`,
+      body:
+        `${agent.name || agent.email} is interested in ` +
+        `${property.propertyTitle} (${property.code || property.propertyId})`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/allotments' },
     };
 
-    await saveToDb(admins.map(a => a._id), payload, 'AGENT_INTERESTED');
-    // Send to all admins — web push and FCM are gated internally by their own checks
-    await Promise.allSettled(admins.map(a => sendNotificationToUser(a._id, payload)));
-  } catch (err) {
-    console.error('notifyAgentInterested error:', err);
+    await saveToDb(
+      admins.map((user) => user._id),
+      payload,
+      'AGENT_INTERESTED'
+    );
+
+    await Promise.allSettled(
+      admins.map((user) =>
+        sendNotificationToUser(user._id, payload)
+      )
+    );
+  } catch (error) {
+    console.error(
+      '[Notify] notifyAgentInterested failed:',
+      error.message
+    );
   }
 };
 
+// Notify the assigned agent.
 const notifyPropertyAssigned = async (property, agentId) => {
   try {
-    const agent = await User.findById(agentId).select('_id fcmTokens');
+    const agent = await User.findById(agentId).select(
+      '_id fcmTokens'
+    );
+
     if (!agent) return;
 
     const payload = {
       title: 'Property Assigned',
-      body: `You have been assigned ${property.propertyTitle} (${property.code || property.propertyId}). Check your ongoing deals.`,
+      body:
+        `You have been assigned ${property.propertyTitle} ` +
+        `(${property.code || property.propertyId}). Check your ongoing deals.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deals' },
     };
 
-    await saveToDb([agent._id], payload, 'PROPERTY_ASSIGNED');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [agent._id],
+      payload,
+      'PROPERTY_ASSIGNED'
+    );
+
     await sendNotificationToUser(agent._id, payload);
-  } catch (err) {
-    console.error('notifyPropertyAssigned error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyPropertyAssigned failed:',
+      error.message
+    );
   }
 };
 
+// Notify admins when an agent completes a deal.
 const notifyDealCompleted = async (deal, property, agent) => {
   try {
-    const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
-    if (!admins.length) return;
+    const admins = await User.find({ role: 'admin' }).select(
+      '_id fcmTokens'
+    );
 
-    const agentName = agent?.name || agent?.email || 'Agent';
-    const propertyLabel = `${property.propertyTitle} (${property.code || property.propertyId})`;
+    if (!admins.length) return;
 
     const payload = {
       title: 'Deal Completed',
-      body: `${agentName} has completed the deal for ${propertyLabel}. Awaiting your approval.`,
+      body:
+        `${agent?.name || agent?.email || 'Agent'} has completed ` +
+        `the deal for ${property.propertyTitle} ` +
+        `(${property.code || property.propertyId}). Awaiting your approval.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deal-approvals' },
     };
 
-    await saveToDb(admins.map(a => a._id), payload, 'DEAL_COMPLETED');
-    // Send to all admins — web push and FCM are gated internally by their own checks
-    await Promise.allSettled(admins.map(a => sendNotificationToUser(a._id, payload)));
-  } catch (err) {
-    console.error('notifyDealCompleted error:', err);
+    await saveToDb(
+      admins.map((user) => user._id),
+      payload,
+      'DEAL_COMPLETED'
+    );
+
+    await Promise.allSettled(
+      admins.map((user) =>
+        sendNotificationToUser(user._id, payload)
+      )
+    );
+  } catch (error) {
+    console.error(
+      '[Notify] notifyDealCompleted failed:',
+      error.message
+    );
   }
 };
 
+// Notify the agent when a deal is approved.
 const notifyDealApproved = async (deal, property, agentId) => {
   try {
-    const agent = await User.findById(agentId).select('_id fcmTokens');
+    const agent = await User.findById(agentId).select(
+      '_id fcmTokens'
+    );
+
     if (!agent) return;
 
     const payload = {
       title: 'Deal Approved',
-      body: `Your deal for ${property.propertyTitle} (${property.code || property.propertyId}) has been approved.`,
+      body:
+        `Your deal for ${property.propertyTitle} ` +
+        `(${property.code || property.propertyId}) has been approved.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deals' },
     };
 
-    await saveToDb([agent._id], payload, 'DEAL_APPROVED');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [agent._id],
+      payload,
+      'DEAL_APPROVED'
+    );
+
     await sendNotificationToUser(agent._id, payload);
-  } catch (err) {
-    console.error('notifyDealApproved error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyDealApproved failed:',
+      error.message
+    );
   }
 };
 
-// ─── NEW: Unassignment & Reassignment Notifications ─────────────────────────────
-
-/**
- * Notify all admins that an agent has requested unassignment.
- */
-const notifyUnassignmentRequested = async (deal, property, agent) => {
+// Notify admins about an unassignment request.
+const notifyUnassignmentRequested = async (
+  deal,
+  property,
+  agent
+) => {
   try {
-    const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
+    const admins = await User.find({ role: 'admin' }).select(
+      '_id fcmTokens'
+    );
+
     if (!admins.length) return;
 
-    const agentName = agent?.name || agent?.email || 'Agent';
     const propertyLabel = property?.propertyTitle
       ? `${property.propertyTitle} (${property.code || ''})`
       : 'a property';
 
     const payload = {
       title: 'Unassignment Request',
-      body: `${agentName} has requested to be unassigned from ${propertyLabel}.`,
+      body:
+        `${agent?.name || agent?.email || 'An agent'} has requested ` +
+        `to be unassigned from ${propertyLabel}.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/allotments' },
     };
 
-    await saveToDb(admins.map(a => a._id), payload, 'UNASSIGN_REQUESTED');
-    // Send to all admins — web push and FCM are gated internally by their own checks
-    await Promise.allSettled(admins.map(a => sendNotificationToUser(a._id, payload)));
-  } catch (err) {
-    console.error('notifyUnassignmentRequested error:', err);
+    await saveToDb(
+      admins.map((user) => user._id),
+      payload,
+      'UNASSIGN_REQUESTED'
+    );
+
+    await Promise.allSettled(
+      admins.map((user) =>
+        sendNotificationToUser(user._id, payload)
+      )
+    );
+  } catch (error) {
+    console.error(
+      '[Notify] notifyUnassignmentRequested failed:',
+      error.message
+    );
   }
 };
 
-/**
- * Notify an agent that a property has been reassigned to them.
- */
-const notifyPropertyReassigned = async (property, newAgentId) => {
+// Notify an agent when a property is reassigned to them.
+const notifyPropertyReassigned = async (
+  property,
+  newAgentId
+) => {
   try {
-    const agent = await User.findById(newAgentId).select('_id fcmTokens');
+    const agent = await User.findById(newAgentId).select(
+      '_id fcmTokens'
+    );
+
     if (!agent) return;
 
     const propertyLabel = property?.propertyTitle
@@ -299,26 +546,39 @@ const notifyPropertyReassigned = async (property, newAgentId) => {
 
     const payload = {
       title: 'Property Reassigned to You',
-      body: `You have been assigned ${propertyLabel}. Check your ongoing deals.`,
+      body:
+        `You have been assigned ${propertyLabel}. ` +
+        'Check your ongoing deals.',
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deals' },
     };
 
-    await saveToDb([agent._id], payload, 'PROPERTY_REASSIGNED');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [agent._id],
+      payload,
+      'PROPERTY_REASSIGNED'
+    );
+
     await sendNotificationToUser(agent._id, payload);
-  } catch (err) {
-    console.error('notifyPropertyReassigned error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyPropertyReassigned failed:',
+      error.message
+    );
   }
 };
 
-/**
- * Notify an agent that their assignment has been ended by admin.
- */
-const notifyAgentUnassigned = async (property, oldAgentId) => {
+// Notify an agent when their assignment ends.
+const notifyAgentUnassigned = async (
+  property,
+  oldAgentId
+) => {
   try {
-    const agent = await User.findById(oldAgentId).select('_id fcmTokens');
+    const agent = await User.findById(oldAgentId).select(
+      '_id fcmTokens'
+    );
+
     if (!agent) return;
 
     const propertyLabel = property?.propertyTitle
@@ -327,56 +587,90 @@ const notifyAgentUnassigned = async (property, oldAgentId) => {
 
     const payload = {
       title: 'Assignment Ended',
-      body: `Your assignment to ${propertyLabel} has been ended by an administrator.`,
+      body:
+        `Your assignment to ${propertyLabel} has been ended ` +
+        'by an administrator.',
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/deals' },
     };
 
-    await saveToDb([agent._id], payload, 'AGENT_UNASSIGNED');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [agent._id],
+      payload,
+      'AGENT_UNASSIGNED'
+    );
+
     await sendNotificationToUser(agent._id, payload);
-  } catch (err) {
-    console.error('notifyAgentUnassigned error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyAgentUnassigned failed:',
+      error.message
+    );
   }
 };
 
-/**
- * Notify all admins that an agent has submitted a property for approval.
- */
-const notifyAdminsPendingProperty = async (property, agent) => {
+// Notify admins about a property awaiting approval.
+const notifyAdminsPendingProperty = async (
+  property,
+  agent
+) => {
   try {
-    const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
+    const admins = await User.find({ role: 'admin' }).select(
+      '_id fcmTokens'
+    );
+
     if (!admins.length) return;
 
-    const agentName = agent?.name || 'An agent';
     const propertyLabel = property?.propertyTitle
       ? `${property.propertyTitle} (${property.code || ''})`
       : 'a property';
 
     const payload = {
       title: 'Property Awaiting Approval',
-      body: `${agentName} has submitted ${propertyLabel} for approval. Please review it.`,
+      body:
+        `${agent?.name || 'An agent'} has submitted ${propertyLabel} ` +
+        'for approval. Please review it.',
       icon: '/logo.png',
       badge: '/notification-badge.png',
       data: { url: '/properties?filter=pending' },
     };
 
-    await saveToDb(admins.map(a => a._id), payload, 'PROPERTY_PENDING_APPROVAL');
-    // Send to all admins — web push and FCM are gated internally by their own checks
-    await Promise.allSettled(admins.map(a => sendNotificationToUser(a._id, payload)));
-  } catch (err) {
-    console.error('notifyAdminsPendingProperty error:', err);
+    await saveToDb(
+      admins.map((user) => user._id),
+      payload,
+      'PROPERTY_PENDING_APPROVAL'
+    );
+
+    await Promise.allSettled(
+      admins.map((user) =>
+        sendNotificationToUser(user._id, payload)
+      )
+    );
+  } catch (error) {
+    console.error(
+      '[Notify] notifyAdminsPendingProperty failed:',
+      error.message
+    );
   }
 };
 
-/**
- * Notify the creating agent that their submitted property has been approved by an admin.
- */
-const notifyAgentPropertyApproved = async (property, agentId) => {
+// Notify the agent that their property has been approved.
+const notifyAgentPropertyApproved = async (
+  property,
+  agentId
+) => {
   try {
-    const agent = await User.findById(agentId).select('_id fcmTokens');
+    const agent = await User.findById(agentId).select(
+      '_id fcmTokens'
+    );
+
     if (!agent) return;
+
+    const propertyId =
+      property.code ||
+      property.propertyId ||
+      String(property._id || '');
 
     const propertyLabel = property?.propertyTitle
       ? `${property.propertyTitle} (${property.code || ''})`
@@ -384,29 +678,39 @@ const notifyAgentPropertyApproved = async (property, agentId) => {
 
     const payload = {
       title: 'Property Approved!',
-      body: `${propertyLabel} has been approved and is now visible to all agents.`,
+      body:
+        `${propertyLabel} has been approved and is now visible to all agents.`,
       icon: '/logo.png',
       badge: '/notification-badge.png',
-      data: { url: `/properties/${property.code || property.propertyId}` },
+      data: { url: `/properties/${propertyId}` },
     };
 
-    await saveToDb([agent._id], payload, 'PROPERTY_APPROVED');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [agent._id],
+      payload,
+      'PROPERTY_APPROVED'
+    );
+
     await sendNotificationToUser(agent._id, payload);
-  } catch (err) {
-    console.error('notifyAgentPropertyApproved error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyAgentPropertyApproved failed:',
+      error.message
+    );
   }
 };
 
-/**
- * Notify an Agent or Admin about a Buyer follow-up reminder.
- */
+// Notify the creator of a buyer record about a follow-up.
 const notifyBuyerReminder = async (buyer) => {
   try {
     const creatorId = buyer.createdByUserId;
+
     if (!creatorId) return;
 
-    const user = await User.findById(creatorId).select('_id fcmTokens');
+    const user = await User.findById(creatorId).select(
+      '_id fcmTokens'
+    );
+
     if (!user) return;
 
     const payload = {
@@ -417,11 +721,18 @@ const notifyBuyerReminder = async (buyer) => {
       data: { url: `/buyers/${buyer._id}` },
     };
 
-    await saveToDb([user._id], payload, 'BUYER_REMINDER');
-    // Always attempt — sendNotificationToUser checks web push subscriptions and FCM tokens internally
+    await saveToDb(
+      [user._id],
+      payload,
+      'BUYER_REMINDER'
+    );
+
     await sendNotificationToUser(user._id, payload);
-  } catch (err) {
-    console.error('notifyBuyerReminder error:', err);
+  } catch (error) {
+    console.error(
+      '[Notify] notifyBuyerReminder failed:',
+      error.message
+    );
   }
 };
 
@@ -432,7 +743,6 @@ module.exports = {
   notifyPropertyAssigned,
   notifyDealCompleted,
   notifyDealApproved,
-  // New
   notifyUnassignmentRequested,
   notifyPropertyReassigned,
   notifyAgentUnassigned,

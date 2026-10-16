@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { setupCapacitorPushNotifications } from '@/lib/capacitorPushNotifications';
-import { Capacitor } from '@capacitor/core';
+import { FCMHandler } from './components/FCMHandler';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
@@ -39,17 +39,6 @@ function App() {
             })
     );
 
-    useEffect(() => {
-        // Only initialize FCM on native Android/iOS — web push uses VAPID/Service Workers
-        if (Capacitor.isNativePlatform()) {
-            // setupCapacitorPushNotifications:
-            //   1. Registers all FCM event listeners (MUST be first)
-            //   2. Requests notification permission from the user
-            //   3. Calls PushNotifications.register() to get FCM token
-            setupCapacitorPushNotifications();
-        }
-    }, []);
-
     return (
         <QueryClientProvider client={queryClient}>
             <BrowserRouter
@@ -58,6 +47,10 @@ function App() {
                     v7_relativeSplatPath: true,
                 }}
             >
+                {/* FCMHandler must be inside BrowserRouter because it uses
+                    React Router hooks such as useNavigate(). */}
+                <FCMHandler />
+
                 <AuthProvider>
                     <Routes>
                         {/* Public */}
@@ -72,26 +65,140 @@ function App() {
                                 </ProtectedRoute>
                             }
                         >
-                            <Route index element={<Navigate to="/dashboard" replace />} />
-                            <Route path="dashboard" element={<DashboardPage />} />
-                            <Route path="properties" element={<PropertiesPage />} />
-                            <Route path="properties/:propertyCode" element={<PropertyViewPage />} />
-                            <Route path="my-properties" element={<ProtectedRoute><MyPropertiesPage /></ProtectedRoute>} />
-                            <Route path="sellers" element={<ProtectedRoute><SellersPage /></ProtectedRoute>} />
-                            <Route path="buyers" element={<ProtectedRoute><BuyersPage /></ProtectedRoute>} />
-                            <Route path="agents" element={<ProtectedRoute requireAdmin><AgentsPage /></ProtectedRoute>} />
-                            <Route path="agents/:id" element={<ProtectedRoute requireAdmin><AgentDetailsPage /></ProtectedRoute>} />
-                            <Route path="search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-                            <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                            <Route path="deals" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
-                            <Route path="allotments" element={<ProtectedRoute requireAdmin><AllotmentsPage /></ProtectedRoute>} />
-                            <Route path="deal-approvals" element={<ProtectedRoute requireAdmin><DealApprovalsPage /></ProtectedRoute>} />
-                            <Route path="property-approvals" element={<ProtectedRoute requireAdmin><PropertyApprovalsPage /></ProtectedRoute>} />
-                            <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+                            <Route
+                                index
+                                element={<Navigate to="/dashboard" replace />}
+                            />
+
+                            <Route
+                                path="dashboard"
+                                element={<DashboardPage />}
+                            />
+
+                            <Route
+                                path="properties"
+                                element={<PropertiesPage />}
+                            />
+
+                            <Route
+                                path="properties/:propertyCode"
+                                element={<PropertyViewPage />}
+                            />
+
+                            <Route
+                                path="my-properties"
+                                element={
+                                    <ProtectedRoute>
+                                        <MyPropertiesPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="sellers"
+                                element={
+                                    <ProtectedRoute>
+                                        <SellersPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="buyers"
+                                element={
+                                    <ProtectedRoute>
+                                        <BuyersPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="agents"
+                                element={
+                                    <ProtectedRoute requireAdmin>
+                                        <AgentsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="agents/:id"
+                                element={
+                                    <ProtectedRoute requireAdmin>
+                                        <AgentDetailsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="search"
+                                element={
+                                    <ProtectedRoute>
+                                        <SearchPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="settings"
+                                element={
+                                    <ProtectedRoute>
+                                        <SettingsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="deals"
+                                element={
+                                    <ProtectedRoute>
+                                        <DealsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="allotments"
+                                element={
+                                    <ProtectedRoute requireAdmin>
+                                        <AllotmentsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="deal-approvals"
+                                element={
+                                    <ProtectedRoute requireAdmin>
+                                        <DealApprovalsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="property-approvals"
+                                element={
+                                    <ProtectedRoute requireAdmin>
+                                        <PropertyApprovalsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="reports"
+                                element={
+                                    <ProtectedRoute>
+                                        <ReportsPage />
+                                    </ProtectedRoute>
+                                }
+                            />
                         </Route>
 
                         {/* Catch-all */}
-                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        <Route
+                            path="*"
+                            element={<Navigate to="/dashboard" replace />}
+                        />
                     </Routes>
                 </AuthProvider>
             </BrowserRouter>

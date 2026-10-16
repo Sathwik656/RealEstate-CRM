@@ -2,104 +2,210 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import type { PluginListenerHandle } from '@capacitor/core';
 import api from '../lib/api';
 
 /**
- * FCMHandler — mounts inside the router so it has access to `navigate`.
+ * FCMHandler
  *
- * CRITICAL ORDER (must not change):
- *   1. Add all PushNotifications listeners FIRST.
- *   2. Check / request notification permission.
- *   3. Call PushNotifications.register() — this triggers the 'registration'
- *      event that delivers the FCM token.  If listeners are not attached
- *      before this call the token event fires into the void and the device
- *      is never registered with the server.
+ * Must be rendered inside BrowserRouter because it uses useNavigate().
  *
- * Returns null — renders nothing.
+ * Initialization order:
+ * 1. Attach listeners.
+ * 2. Check/request permission.
+ * 3. Register with FCM.
+ *
+ * Renders nothing.
  */
 export function FCMHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
 
     let mounted = true;
+    let initializing = false;
+
+    const listenerHandles: PluginListenerHandle[] = [];
+
+    const addListener = async (
+      listenerPromise: Promise<PluginListenerHandle>
+    ) => {
+      const handle = await listenerPromise;
+
+      // If the component unmounted while the listener was being added,
+      // immediately remove the listener instead of leaving it registered.
+      if (!mounted) {
+        await handle.remove();
+        return false;
+      }
+
+      listenerHandles.push(handle);
+      return true;
+    };
 
     const init = async () => {
-      // ── Step 1: Attach all event listeners first ────────────────────────────
+      if (initializing) return;
+      initializing = true;
 
-      // FCM token received — save it to the server so we can target this device
-      await PushNotifications.addListener('registration', async (token) => {
-        if (!mounted) return;
-        console.log('[FCM] Registration success.');
-        try {
-          await api.post('/notifications/fcm-token', { token: token.value });
-          console.log('[FCM] Token saved to server.');
-        } catch (error) {
-          console.error('[FCM] Error saving FCM token to server:', error);
-        }
-      });
-
-      // FCM registration failure — log for debugging
-      await PushNotifications.addListener('registrationError', (err) => {
-        console.error('[FCM] Registration error:', err.error);
-      });
-
-      // Push received while app is in the foreground.
-      // The system does NOT automatically show a heads-up notification when
-      // the app is in the foreground on Android, so we just log here.
-      // The in-app notification bell will pick up the notification via the
-      // existing backend polling, so no duplicate is created.
-      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        console.log('[FCM] Foreground push received:', notification.title);
-        // To show a native heads-up while in foreground you would need a
-        // native Android service — the web layer cannot do this.
-        // The user will see the in-app notification badge update instead.
-      });
-
-      // User tapped a notification in the system shade — navigate to the URL
-      // embedded in the notification data payload.
-      await PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('[FCM] Notification tapped:', notification.notification.title);
-        const data = notification.notification.data;
-        if (data && data.url) {
-          navigate(data.url);
-        }
-      });
-
-      // ── Step 2: Check / request notification permission ─────────────────────
-      let permStatus = await PushNotifications.checkPermissions();
-      console.log('[FCM] Permission status:', permStatus.receive);
-
-      if (permStatus.receive === 'prompt' || permStatus.receive === 'prompt-with-rationale') {
-        permStatus = await PushNotifications.requestPermissions();
-        console.log('[FCM] Permission after request:', permStatus.receive);
-      }
-
-      if (permStatus.receive !== 'granted') {
-        console.warn('[FCM] Push notification permission not granted.');
-        return;
-      }
-
-      // ── Step 3: Register with FCM — fires 'registration' with the token ─────
       try {
+        // Step 1: Attach listeners before registering with FCM.
+
+        const registrationListenerAdded = await addListener(
+          PushNotifications.addListener(
+            'registration',
+            async (token) => {
+              if (!mounted) return;
+
+              console.log('[FCM] Registration successful.');
+
+              try {
+                await api.post('/notifications/fcm-token', {
+                  token: token.value,
+                });
+
+                if (mounted) {
+                  console.log(
+                    '[FCM] Token saved to server.'
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  '[FCM] Failed to save token to server:',
+                  error
+                );
+              }
+            }
+          )
+        );
+
+        if (!registrationListenerAdded) return;
+
+        const registrationErrorListenerAdded = await addListener(
+          PushNotifications.addListener(
+            'registrationError',
+            (error) => {
+              console.error(
+                '[FCM] Registration error:',
+                error.error
+              );
+            }
+          )
+        );
+
+        if (!registrationErrorListenerAdded) return;
+
+        const foregroundListenerAdded = await addListener(
+          PushNotifications.addListener(
+            'pushNotificationReceived',
+            (notification) => {
+              console.log(
+                '[FCM] Push received:',
+                notification.title,
+                notification.body
+              );
+
+              // This handler logs foreground messages only.
+              // It does not display a system notification.
+            }
+          )
+        );
+
+        if (!foregroundListenerAdded) return;
+
+        const actionListenerAdded = await addListener(
+          PushNotifications.addListener(
+            'pushNotificationActionPerformed',
+            (event) => {
+              if (!mounted) return;
+
+              console.log(
+                '[FCM] Notification tapped:',
+                event.notification.title
+              );
+
+              const url = event.notification.data?.url;
+
+              if (
+                typeof url === 'string' &&
+                url.startsWith('/') &&
+                !url.startsWith('//')
+              ) {
+                navigate(url);
+              }
+            }
+          )
+        );
+
+        if (!actionListenerAdded) return;
+
+        if (!mounted) return;
+
+        // Step 2: Check/request notification permission.
+
+        let permission =
+          await PushNotifications.checkPermissions();
+
+        console.log(
+          '[FCM] Notification permission:',
+          permission.receive
+        );
+
+        if (
+          permission.receive === 'prompt' ||
+          permission.receive === 'prompt-with-rationale'
+        ) {
+          permission =
+            await PushNotifications.requestPermissions();
+
+          console.log(
+            '[FCM] Permission after request:',
+            permission.receive
+          );
+        }
+
+        if (!mounted) return;
+
+        if (permission.receive !== 'granted') {
+          console.warn(
+            '[FCM] Permission not granted; registration skipped.'
+          );
+          return;
+        }
+
+        // Step 3: Register with FCM.
+        // The registration listener above receives the device token.
+
         await PushNotifications.register();
-        console.log('[FCM] register() called — awaiting token via listener.');
-      } catch (e) {
-        console.error('[FCM] Failed to call register():', e);
+
+        console.log('[FCM] Registration requested.');
+      } catch (error) {
+        if (mounted) {
+          console.error(
+            '[FCM] Initialization failed:',
+            error
+          );
+        }
+      } finally {
+        initializing = false;
       }
     };
 
-    init();
+    void init();
 
     return () => {
       mounted = false;
-      // Remove all listeners when the component unmounts to avoid duplicates
-      // if the component is ever remounted (e.g. during hot reload in dev).
-      PushNotifications.removeAllListeners();
+
+      // Remove only listeners owned by this component.
+      void Promise.allSettled(
+        listenerHandles.map((handle) => handle.remove())
+      );
     };
   }, [navigate]);
 
   return null;
 }
 
+export default FCMHandler;
