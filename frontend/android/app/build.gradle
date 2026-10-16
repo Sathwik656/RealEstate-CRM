@@ -52,8 +52,8 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-apply plugin: 'com.google.gms.google-services'
 
+// Apply google-services plugin once — required for Firebase/FCM
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {

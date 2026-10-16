@@ -3,7 +3,10 @@
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required to show notifications on Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Required by FCM to restart push after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -32,5 +35,27 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!--
+            FCM Default Notification Channel (required for Android 8.0+ / API 26+).
+            Without this, FCM notifications are silently dropped on devices running
+            Android Oreo and above because there's no channel to post to.
+            The channel ID here must match the one used when sending from the server
+            (or Firebase will create a default one using this ID).
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="fcm_default_channel" />
+
+        <!--
+            Optional: Set a custom default icon for FCM notifications.
+            Without this FCM uses the app launcher icon which may not look right
+            in the status bar (it should be a white/transparent monochrome icon).
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
     </application>
 </manifest>
+

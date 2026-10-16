@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { setupCapacitorPushNotifications, registerPushNotificationListeners } from '@/lib/capacitorPushNotifications';
+import { setupCapacitorPushNotifications } from '@/lib/capacitorPushNotifications';
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
 
 // Pages
 import LoginPage from '@/pages/LoginPage';
@@ -41,11 +40,12 @@ function App() {
   );
 
   useEffect(() => {
-    // Only run this on Android/iOS
+    // Only initialize FCM on native Android/iOS — web push uses VAPID/Service Workers
     if (Capacitor.isNativePlatform()) {
-      registerPushNotificationListeners();
-
-      // Ask for permission immediately when the app starts
+      // setupCapacitorPushNotifications:
+      //   1. Registers all FCM event listeners (MUST be first)
+      //   2. Requests notification permission from the user
+      //   3. Calls PushNotifications.register() to get FCM token
       setupCapacitorPushNotifications();
     }
   }, []);
