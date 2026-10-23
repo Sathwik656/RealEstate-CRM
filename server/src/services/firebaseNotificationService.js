@@ -131,6 +131,15 @@ const sendPushNotification = async (options = {}) => {
                 title: String(title || ''),
                 body: String(body || ''),
             },
+            android: {
+                notification: {
+                    sound: 'default',
+                    channelId: 'fcm_default_channel',
+                    priority: 'high',
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                },
+            },
             tokens: [],
         };
 
