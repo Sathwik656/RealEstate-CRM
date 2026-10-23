@@ -251,6 +251,8 @@ const notifyAllEligibleAgents = async (property, excludeUserId) => {
         user.fcmTokens.length > 0
     );
 
+    console.log('[Notify] FCM Eligible Users (IDs and Token Counts):', fcmUsers.map(u => ({ id: u._id, fcmTokensCount: u.fcmTokens.length })));
+
     // Deduplicate users who have both delivery methods.
     const targetIds = new Set([
       ...webPushUsers.map((user) => String(user._id)),
