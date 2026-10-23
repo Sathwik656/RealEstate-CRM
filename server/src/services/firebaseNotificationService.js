@@ -58,7 +58,7 @@ const sendPushNotification = async (options = {}) => {
         data,
     } = options || {};
 
-    if (!Array.isArray(userIds) || userIds.length === 0) {
+    if (!options || !Array.isArray(options.userIds) || options.userIds.length === 0) {
         console.error(
             '[FCM] Invalid or missing userIds. Cannot send notification.',
             {
