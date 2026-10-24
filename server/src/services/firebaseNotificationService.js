@@ -1,44 +1,38 @@
 
 'use strict';
 
-const admin = require('firebase-admin');
+const { initializeApp, getApps, applicationDefault, cert } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
 const User = require('../models/User');
 
-// Initialize Firebase Admin from environment variables.
 try {
-    if (!admin.apps.length) {
-        const {
-            FIREBASE_PROJECT_ID,
-            FIREBASE_CLIENT_EMAIL,
-            FIREBASE_PRIVATE_KEY,
-        } = process.env;
+    if (getApps().length === 0) {
+        const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+        const rawKey = process.env.FIREBASE_PRIVATE_KEY;
 
-        if (
-            FIREBASE_PROJECT_ID &&
-            FIREBASE_CLIENT_EMAIL &&
-            FIREBASE_PRIVATE_KEY
-        ) {
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: FIREBASE_PROJECT_ID,
-                    clientEmail: FIREBASE_CLIENT_EMAIL,
-                    privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                }),
-            });
-
-            console.log('[FCM] Firebase Admin initialized.');
-        } else {
-            console.error(
-                '[FCM] Missing Firebase Admin environment variables. FCM is disabled.'
-            );
+        if (!projectId || !clientEmail || !rawKey) {
+            throw new Error('Firebase Admin environment variables are missing.');
         }
+
+        const privateKey = rawKey.replace(/\\n/g, '\n').trim();
+
+        initializeApp({
+            credential: cert({
+                projectId,
+                clientEmail,
+                privateKey,
+            }),
+            projectId,
+        });
+
+        console.log('[FCM] Firebase Admin initialized successfully.');
     }
 } catch (error) {
-    console.error(
-        '[FCM] Firebase Admin initialization failed:',
-        error.message
-    );
+    console.error('[FCM] Initialization error:', error.stack || error.message);
 }
+
+
 
 const CHUNK_SIZE = 500;
 
@@ -74,7 +68,7 @@ const sendPushNotification = async (options = {}) => {
             reason: 'invalid-or-empty-userIds',
         };
     }
-    if (!admin.apps.length) {
+    if (getApps().length === 0) {
         console.error(
             '[FCM] Send skipped: Firebase Admin is not initialized.'
         );
@@ -90,7 +84,13 @@ const sendPushNotification = async (options = {}) => {
     try {
         const users = await User.find({
             _id: { $in: userIds },
-        }).select('_id fcmTokens');
+        }).select('_id email fcmTokens');
+
+        console.log(`[FCM Diagnostic] Looking up ${userIds.length} user ID(s):`, userIds);
+        console.log(`[FCM Diagnostic] Found ${users.length} user record(s) in DB.`);
+        users.forEach(u => {
+            console.log(`[FCM Diagnostic] User ${u._id} (${u.email}): has ${(u.fcmTokens || []).length} token(s).`);
+        });
 
         // Map unique tokens to avoid duplicate sends.
         const tokenOwners = new Map();
@@ -167,7 +167,7 @@ const sendPushNotification = async (options = {}) => {
                 }: ${batch.length} device token(s).`
             );
 
-            const response = await admin.messaging().sendEachForMulticast({
+            const response = await getMessaging().sendEachForMulticast({
                 ...message,
                 tokens: batch,
             });
